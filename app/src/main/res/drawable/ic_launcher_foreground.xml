@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer subtle glow badge -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M54,28 A26,26 0 0,1 80,54 A26,26 0 0,1 54,80 A26,26 0 0,1 28,54 A26,26 0 0,1 54,28 Z" />
+
+    <!-- Top arc (Lent / Outflow - Green #10B981) -->
+    <path
+        android:strokeColor="#10B981"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M37,45 A20,20 0 0,1 71,45" />
+    <!-- Top Arrow Head -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M70,41 L76,46 L70,51 Z" />
+
+    <!-- Bottom arc (Borrowed / Repaid - Coral #F97316) -->
+    <path
+        android:strokeColor="#F97316"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M71,63 A20,20 0 0,1 37,63" />
+    <!-- Bottom Arrow Head -->
+    <path
+        android:fillColor="#F97316"
+        android:pathData="M38,67 L32,62 L38,57 Z" />
+
+    <!-- Indian Rupee Symbol (₹) in center (Canvas 54,54) -->
+    <!-- Top horizontal bar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46.5,45.5 L61.5,45.5 L61.5,47.5 L46.5,47.5 Z" />
+    <!-- Second horizontal bar -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M46.5,49.5 L60.5,49.5 L60.5,51.5 L46.5,51.5 Z" />
+    <!-- Vertical stem and upper curve -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L50.5,56.8 L50.5,62.5 L48.5,62.5 L48.5,45.5 Z" />
+</vector>

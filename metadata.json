@@ -1,0 +1,6 @@
+{
+  "name": "Phittoos",
+  "description": "Tera Mera Hisaab Phittoos - simple, fast informal lending tracker for friends.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
