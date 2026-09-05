@@ -36,3 +36,9 @@ data class TransactionEntity(
     @ColumnInfo(name = "paid_amount")
     val paidAmount: Double? = null
 )
+
+val TransactionEntity.effectiveRemainingAmount: Double
+    get() {
+        val validPaid = (paidAmount ?: 0.0).coerceIn(0.0, amount)
+        return (amount - validPaid).coerceAtLeast(0.0)
+    }

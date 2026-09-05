@@ -7,6 +7,7 @@ import com.example.data.model.Friend
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
+import com.example.data.model.effectiveRemainingAmount
 import com.example.data.repository.PhittoosRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,7 +43,7 @@ class FriendDetailViewModel(
         for (tx in transactions) {
             if (tx.status == TransactionStatus.OPEN) {
                 openCount++
-                val effectiveAmount = tx.amount - (tx.paidAmount ?: 0.0)
+                val effectiveAmount = tx.effectiveRemainingAmount
                 if (tx.direction == TransactionDirection.LENT) {
                     net += effectiveAmount
                 } else {

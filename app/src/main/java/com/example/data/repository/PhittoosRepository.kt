@@ -8,6 +8,7 @@ import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
 import com.example.data.model.TransactionWithFriend
+import com.example.data.model.effectiveRemainingAmount
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -34,7 +35,7 @@ class PhittoosRepository(
             for (tx in friendTxs) {
                 if (tx.status == TransactionStatus.OPEN) {
                     openCount++
-                    val effectiveAmount = tx.amount - (tx.paidAmount ?: 0.0)
+                    val effectiveAmount = tx.effectiveRemainingAmount
                     if (tx.direction == TransactionDirection.LENT) {
                         net += effectiveAmount
                     } else {
@@ -67,7 +68,7 @@ class PhittoosRepository(
 
         for (tx in transactions) {
             if (tx.status == TransactionStatus.OPEN) {
-                val effectiveAmount = tx.amount - (tx.paidAmount ?: 0.0)
+                val effectiveAmount = tx.effectiveRemainingAmount
                 if (tx.direction == TransactionDirection.LENT) {
                     lentTotal += effectiveAmount
                 } else {
@@ -114,7 +115,7 @@ class PhittoosRepository(
         for (tx in friendTxs) {
             if (tx.status == TransactionStatus.OPEN) {
                 openCount++
-                val effectiveAmount = tx.amount - (tx.paidAmount ?: 0.0)
+                val effectiveAmount = tx.effectiveRemainingAmount
                 if (tx.direction == TransactionDirection.LENT) {
                     net += effectiveAmount
                 } else {
