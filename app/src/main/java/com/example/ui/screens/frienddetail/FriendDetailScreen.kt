@@ -48,6 +48,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,6 +66,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
+import com.example.data.model.effectiveRemainingAmount
 import com.example.ui.components.AvatarInitial
 import com.example.ui.theme.CoralOrange
 import com.example.ui.theme.CoralOrangeDark
@@ -79,6 +83,7 @@ import com.example.ui.theme.Slate500
 import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate900
 import com.example.ui.util.Formatters
+import com.example.ui.viewmodel.BulkSettlementEligibility
 import com.example.ui.viewmodel.FriendDetailViewModel
 import kotlin.math.abs
 
@@ -92,6 +97,9 @@ fun FriendDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    var txToSettle by remember { mutableStateOf<TransactionEntity?>(null) }
+    var showBulkSettlementDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.toastMessage) {
         uiState.toastMessage?.let { msg ->
@@ -153,18 +161,63 @@ fun FriendDetailScreen(
                 item {
                     FriendDetailHeader(
                         friendName = friend.name,
-                        netBalance = net
+                        netBalance = net,
+                        openTransactionsCount = uiState.openTransactionsCount
                     )
                 }
 
-                // Action Row: "Add new transaction" & "Mark as paid"
+                // Action Row: "Add loan" & "Settle all" / "Settle individually"
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     ActionRow(
-                        hasOpenBalance = uiState.openTransactionsCount > 0,
+                        eligibility = uiState.bulkSettlementEligibility,
                         onAddTransaction = { onNavigateToAddTransaction(friend.id) },
-                        onMarkAsPaid = { viewModel.markAllAsPaid() }
+                        onRequestBulkSettle = { showBulkSettlementDialog = true }
                     )
+                }
+
+                // Mixed-Direction Guidance Notice
+                if (uiState.bulkSettlementEligibility == BulkSettlementEligibility.MIXED_DIRECTIONS) {
+                    item {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("card_mixed_settlement_notice"),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = Slate100)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = Slate700,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .padding(top = 2.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Settle individually",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Slate900
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "You have unsettled transactions in both directions. Settle them individually to keep your records accurate.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Slate700,
+                                        lineHeight = 18.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Timeline Section Header
@@ -233,10 +286,38 @@ fun FriendDetailScreen(
                     ) { tx ->
                         TimelineTransactionItem(
                             tx = tx,
-                            onMarkPaid = { viewModel.markTransactionAsPaid(tx.id) }
+                            onSettleClick = { txToSettle = tx }
                         )
                     }
                 }
+            }
+
+            // Contextual Individual Settlement Dialog
+            txToSettle?.let { tx ->
+                IndividualSettlementDialog(
+                    friendName = friend.name,
+                    tx = tx,
+                    onConfirm = {
+                        viewModel.settleTransaction(tx.id)
+                        txToSettle = null
+                    },
+                    onDismiss = { txToSettle = null }
+                )
+            }
+
+            // Contextual Same-Direction Bulk Settlement Dialog
+            if (showBulkSettlementDialog) {
+                BulkSettlementDialog(
+                    friendName = friend.name,
+                    eligibility = uiState.bulkSettlementEligibility,
+                    totalRemaining = uiState.bulkSettlementTotalRemaining,
+                    openCount = uiState.bulkSettlementOpenCount,
+                    onConfirm = {
+                        viewModel.settleAllSameDirection()
+                        showBulkSettlementDialog = false
+                    },
+                    onDismiss = { showBulkSettlementDialog = false }
+                )
             }
         }
     }
@@ -245,7 +326,8 @@ fun FriendDetailScreen(
 @Composable
 private fun FriendDetailHeader(
     friendName: String,
-    netBalance: Double
+    netBalance: Double,
+    openTransactionsCount: Int
 ) {
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -304,6 +386,26 @@ private fun FriendDetailHeader(
                         color = CoralOrangeDark
                     )
                 }
+                openTransactionsCount > 0 -> {
+                    Text(
+                        text = "Net balance ₹0",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Slate500,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "₹0",
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Slate900
+                    )
+                    Text(
+                        text = "($openTransactionsCount unsettled loan${if (openTransactionsCount == 1) "" else "s"})",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Slate500,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
                 else -> {
                     Text(
                         text = "All settled up",
@@ -358,10 +460,14 @@ private fun FriendDetailHeader(
 
 @Composable
 private fun ActionRow(
-    hasOpenBalance: Boolean,
+    eligibility: BulkSettlementEligibility,
     onAddTransaction: () -> Unit,
-    onMarkAsPaid: () -> Unit
+    onRequestBulkSettle: () -> Unit
 ) {
+    val canBulkSettle = eligibility == BulkSettlementEligibility.SAME_DIRECTION_LENT ||
+        eligibility == BulkSettlementEligibility.SAME_DIRECTION_BORROWED
+    val isMixed = eligibility == BulkSettlementEligibility.MIXED_DIRECTIONS
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -381,22 +487,32 @@ private fun ActionRow(
             Text("Add Loan", fontWeight = FontWeight.Bold)
         }
 
-        // "Mark as paid" button (UI wired to flip status to CONFIRMED)
+        // Bulk settlement action or disabled explanation button
         OutlinedButton(
-            onClick = onMarkAsPaid,
-            enabled = hasOpenBalance,
+            onClick = onRequestBulkSettle,
+            enabled = canBulkSettle,
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = EmeraldGreenDark
+                contentColor = if (canBulkSettle) EmeraldGreenDark else Slate400,
+                disabledContentColor = Slate400
             ),
             modifier = Modifier
                 .weight(1f)
                 .height(50.dp)
                 .testTag("button_detail_mark_paid")
         ) {
-            Icon(Icons.Default.DoneAll, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(
+                if (isMixed) Icons.Default.Info else Icons.Default.DoneAll,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
             Spacer(modifier = Modifier.width(6.dp))
-            Text("Mark as Paid", fontWeight = FontWeight.Bold)
+            Text(
+                text = if (isMixed) "Settle individually" else "Settle All",
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -404,7 +520,7 @@ private fun ActionRow(
 @Composable
 private fun TimelineTransactionItem(
     tx: TransactionEntity,
-    onMarkPaid: () -> Unit
+    onSettleClick: () -> Unit
 ) {
     val isLent = tx.direction == TransactionDirection.LENT
     val isConfirmed = tx.status == TransactionStatus.CONFIRMED
@@ -488,7 +604,7 @@ private fun TimelineTransactionItem(
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
                                     Text(
-                                        text = "Confirmed",
+                                        text = "Settled",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = EmeraldGreenDark
@@ -569,7 +685,7 @@ private fun TimelineTransactionItem(
                 }
             }
 
-            // Due date & Individual Mark Paid button
+            // Due date & Individual Settle this button
             if (!isConfirmed) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
@@ -598,11 +714,138 @@ private fun TimelineTransactionItem(
                         fontWeight = FontWeight.Bold,
                         color = EmeraldGreenDark,
                         modifier = Modifier
-                            .clickable(onClick = onMarkPaid)
+                            .clickable(onClick = onSettleClick)
                             .padding(4.dp)
+                            .testTag("button_settle_${tx.id}")
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+internal fun IndividualSettlementDialog(
+    friendName: String,
+    tx: TransactionEntity,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val isLent = tx.direction == TransactionDirection.LENT
+    val remaining = tx.effectiveRemainingAmount
+    val originalAmount = tx.amount
+    val hasPartialPayment = tx.paidAmount != null && tx.paidAmount > 0
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Settle ${Formatters.formatCurrency(remaining)}?",
+                fontWeight = FontWeight.Bold,
+                color = Slate900
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = if (isLent) {
+                        "Mark this as settled only if $friendName has paid you back."
+                    } else {
+                        "Mark this as settled only if you've paid $friendName back."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Slate700
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                val contextLine = if (isLent) {
+                    "You lent $friendName ${Formatters.formatCurrency(originalAmount)}"
+                } else {
+                    "You borrowed ${Formatters.formatCurrency(originalAmount)} from $friendName"
+                }
+                Text(
+                    text = if (hasPartialPayment) {
+                        "$contextLine (${Formatters.formatCurrency(tx.paidAmount ?: 0.0)} already paid)"
+                    } else {
+                        contextLine
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Slate500,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.testTag("button_confirm_settle_individual")
+            ) {
+                Text("Mark as settled", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.testTag("button_cancel_settle_individual")
+            ) {
+                Text("Cancel", color = Slate700)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+@Composable
+internal fun BulkSettlementDialog(
+    friendName: String,
+    eligibility: BulkSettlementEligibility,
+    totalRemaining: Double,
+    openCount: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val isLent = eligibility == BulkSettlementEligibility.SAME_DIRECTION_LENT
+    val countString = "$openCount ${if (isLent) "lent" else "borrowed"} transaction${if (openCount == 1) "" else "s"}"
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Settle ${Formatters.formatCurrency(totalRemaining)} with $friendName?",
+                fontWeight = FontWeight.Bold,
+                color = Slate900
+            )
+        },
+        text = {
+            Text(
+                text = "$countString will be marked as settled.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Slate700
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.testTag("button_confirm_settle_bulk")
+            ) {
+                Text("Mark all as settled", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.testTag("button_cancel_settle_bulk")
+            ) {
+                Text("Cancel", color = Slate700)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp)
+    )
 }

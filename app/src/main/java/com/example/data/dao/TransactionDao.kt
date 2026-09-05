@@ -23,6 +23,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY created_date DESC LIMIT :limit")
     fun getRecentTransactions(limit: Int = 5): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions WHERE friend_id = :friendId AND status = 'OPEN'")
+    suspend fun getOpenTransactionsForFriend(friendId: Long): List<TransactionEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity): Long
 
@@ -32,7 +35,7 @@ interface TransactionDao {
     @Delete
     suspend fun deleteTransaction(transaction: TransactionEntity)
 
-    @Query("UPDATE transactions SET status = 'CONFIRMED' WHERE id = :id")
+    @Query("UPDATE transactions SET status = 'CONFIRMED' WHERE id = :id AND status = 'OPEN'")
     suspend fun markAsConfirmed(id: Long)
 
     @Query("UPDATE transactions SET status = 'CONFIRMED' WHERE friend_id = :friendId AND status = 'OPEN'")

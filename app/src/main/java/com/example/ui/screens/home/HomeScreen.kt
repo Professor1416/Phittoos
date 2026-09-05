@@ -579,6 +579,14 @@ private fun FriendRowItem(
                             color = CoralOrangeDark
                         )
                     }
+                    friendWithBalance.openTransactionsCount > 0 -> {
+                        Text(
+                            text = "Net ₹0",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Slate700
+                        )
+                    }
                     else -> {
                         Text(
                             text = "Settled",

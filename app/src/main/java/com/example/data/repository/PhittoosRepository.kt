@@ -165,12 +165,29 @@ class PhittoosRepository(
         )
     }
 
+    suspend fun getTransactionById(transactionId: Long): TransactionEntity? {
+        return transactionDao.getTransactionById(transactionId)
+    }
+
     suspend fun markTransactionAsPaid(transactionId: Long) {
         transactionDao.markAsConfirmed(transactionId)
     }
 
-    suspend fun markAllForFriendAsPaid(friendId: Long) {
+    suspend fun settleAllSameDirectionForFriend(friendId: Long): Boolean {
+        val openTxs = transactionDao.getOpenTransactionsForFriend(friendId)
+        if (openTxs.isEmpty()) return false
+        val hasLent = openTxs.any { it.direction == TransactionDirection.LENT }
+        val hasBorrowed = openTxs.any { it.direction == TransactionDirection.BORROWED }
+        if (hasLent && hasBorrowed) {
+            // Mixed direction safety guard: do NOT bulk-settle when transactions are in both directions
+            return false
+        }
         transactionDao.markAllOpenForFriendAsConfirmed(friendId)
+        return true
+    }
+
+    suspend fun markAllForFriendAsPaid(friendId: Long): Boolean {
+        return settleAllSameDirectionForFriend(friendId)
     }
 
     suspend fun getRecentFriends(limit: Int = 6): List<Friend> {

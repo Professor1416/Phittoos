@@ -14,7 +14,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+enum class BulkSettlementEligibility {
+    NONE,
+    SAME_DIRECTION_LENT,
+    SAME_DIRECTION_BORROWED,
+    MIXED_DIRECTIONS
+}
 
 data class FriendDetailUiState(
     val friend: Friend? = null,
@@ -22,7 +30,12 @@ data class FriendDetailUiState(
     val timeline: List<TransactionEntity> = emptyList(),
     val openTransactionsCount: Int = 0,
     val isLoading: Boolean = true,
-    val toastMessage: String? = null
+    val toastMessage: String? = null,
+    val bulkSettlementEligibility: BulkSettlementEligibility = BulkSettlementEligibility.NONE,
+    val bulkSettlementTotalRemaining: Double = 0.0,
+    val bulkSettlementOpenCount: Int = 0,
+    val settlingTransactionIds: Set<Long> = emptySet(),
+    val isBulkSettling: Boolean = false
 )
 
 class FriendDetailViewModel(
@@ -31,24 +44,56 @@ class FriendDetailViewModel(
 ) : ViewModel() {
 
     private val _toastMessage = MutableStateFlow<String?>(null)
+    private val _settlingTransactionIds = MutableStateFlow<Set<Long>>(emptySet())
+    private val _isBulkSettling = MutableStateFlow(false)
 
     val uiState: StateFlow<FriendDetailUiState> = combine(
         repository.getFriendById(friendId),
         repository.getTransactionsForFriend(friendId),
-        _toastMessage
-    ) { friend, transactions, toast ->
-        var net = 0.0
-        var openCount = 0
+        _toastMessage,
+        _settlingTransactionIds,
+        _isBulkSettling
+    ) { friend, transactions, toast, settlingIds, isBulkSettling ->
+        val openTxs = transactions.filter { it.status == TransactionStatus.OPEN }
+        val openCount = openTxs.size
 
-        for (tx in transactions) {
-            if (tx.status == TransactionStatus.OPEN) {
-                openCount++
-                val effectiveAmount = tx.effectiveRemainingAmount
-                if (tx.direction == TransactionDirection.LENT) {
-                    net += effectiveAmount
-                } else {
-                    net -= effectiveAmount
-                }
+        var net = 0.0
+        for (tx in openTxs) {
+            val effectiveAmount = tx.effectiveRemainingAmount
+            if (tx.direction == TransactionDirection.LENT) {
+                net += effectiveAmount
+            } else {
+                net -= effectiveAmount
+            }
+        }
+
+        val hasLent = openTxs.any { it.direction == TransactionDirection.LENT }
+        val hasBorrowed = openTxs.any { it.direction == TransactionDirection.BORROWED }
+
+        val eligibility: BulkSettlementEligibility
+        val bulkRemaining: Double
+        val bulkCount: Int
+
+        when {
+            openTxs.isEmpty() -> {
+                eligibility = BulkSettlementEligibility.NONE
+                bulkRemaining = 0.0
+                bulkCount = 0
+            }
+            hasLent && hasBorrowed -> {
+                eligibility = BulkSettlementEligibility.MIXED_DIRECTIONS
+                bulkRemaining = 0.0
+                bulkCount = openCount
+            }
+            hasLent -> {
+                eligibility = BulkSettlementEligibility.SAME_DIRECTION_LENT
+                bulkRemaining = openTxs.sumOf { it.effectiveRemainingAmount }
+                bulkCount = openCount
+            }
+            else -> {
+                eligibility = BulkSettlementEligibility.SAME_DIRECTION_BORROWED
+                bulkRemaining = openTxs.sumOf { it.effectiveRemainingAmount }
+                bulkCount = openCount
             }
         }
 
@@ -58,7 +103,12 @@ class FriendDetailViewModel(
             timeline = transactions,
             openTransactionsCount = openCount,
             isLoading = friend == null,
-            toastMessage = toast
+            toastMessage = toast,
+            bulkSettlementEligibility = eligibility,
+            bulkSettlementTotalRemaining = bulkRemaining,
+            bulkSettlementOpenCount = bulkCount,
+            settlingTransactionIds = settlingIds,
+            isBulkSettling = isBulkSettling
         )
     }.stateIn(
         scope = viewModelScope,
@@ -66,18 +116,44 @@ class FriendDetailViewModel(
         initialValue = FriendDetailUiState()
     )
 
-    fun markAllAsPaid() {
+    fun settleTransaction(transactionId: Long) {
+        if (_settlingTransactionIds.value.contains(transactionId)) return
+        _settlingTransactionIds.update { it + transactionId }
         viewModelScope.launch {
-            repository.markAllForFriendAsPaid(friendId)
-            _toastMessage.value = "All balance marked as settled (Phittoos!)"
+            try {
+                val tx = repository.getTransactionById(transactionId)
+                if (tx != null && tx.status == TransactionStatus.OPEN) {
+                    repository.markTransactionAsPaid(transactionId)
+                    _toastMessage.value = "Transaction marked as settled"
+                }
+            } finally {
+                _settlingTransactionIds.update { it - transactionId }
+            }
         }
     }
 
-    fun markTransactionAsPaid(transactionId: Long) {
+    fun settleAllSameDirection() {
+        if (_isBulkSettling.value) return
+
+        _isBulkSettling.value = true
         viewModelScope.launch {
-            repository.markTransactionAsPaid(transactionId)
-            _toastMessage.value = "Transaction marked as settled"
+            try {
+                val success = repository.settleAllSameDirectionForFriend(friendId)
+                if (success) {
+                    _toastMessage.value = "All eligible transactions marked as settled"
+                }
+            } finally {
+                _isBulkSettling.value = false
+            }
         }
+    }
+
+    fun markAllAsPaid() {
+        settleAllSameDirection()
+    }
+
+    fun markTransactionAsPaid(transactionId: Long) {
+        settleTransaction(transactionId)
     }
 
     fun clearToast() {

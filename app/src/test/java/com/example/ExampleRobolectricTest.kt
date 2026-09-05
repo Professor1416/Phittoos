@@ -2,7 +2,10 @@ package com.example
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -183,5 +186,56 @@ class ExampleRobolectricTest {
     composeTestRule.onNodeWithText("Aman").assertIsDisplayed()
 
     inMemoryDb.close()
+  }
+
+  @Test
+  fun `individual settlement dialog displays amount and triggers onConfirm`() {
+    var confirmed = false
+    val tx = com.example.data.model.TransactionEntity(
+      id = 1L,
+      friendId = 10L,
+      amount = 500.0,
+      direction = com.example.data.model.TransactionDirection.LENT,
+      status = com.example.data.model.TransactionStatus.OPEN
+    )
+
+    composeTestRule.setContent {
+      PhittoosTheme {
+        com.example.ui.screens.frienddetail.IndividualSettlementDialog(
+          friendName = "Akash",
+          tx = tx,
+          onConfirm = { confirmed = true },
+          onDismiss = {}
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Settle ₹500?", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Mark this as settled only if Akash has paid you back.", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithTag("button_confirm_settle_individual").performClick()
+    assertTrue(confirmed)
+  }
+
+  @Test
+  fun `bulk settlement dialog displays summary and triggers onConfirm`() {
+    var confirmed = false
+
+    composeTestRule.setContent {
+      PhittoosTheme {
+        com.example.ui.screens.frienddetail.BulkSettlementDialog(
+          friendName = "Pooja",
+          eligibility = com.example.ui.viewmodel.BulkSettlementEligibility.SAME_DIRECTION_LENT,
+          totalRemaining = 800.0,
+          openCount = 2,
+          onConfirm = { confirmed = true },
+          onDismiss = {}
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithText("Settle ₹800 with Pooja?", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithText("2 lent transactions will be marked as settled.", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithTag("button_confirm_settle_bulk").performClick()
+    assertTrue(confirmed)
   }
 }
