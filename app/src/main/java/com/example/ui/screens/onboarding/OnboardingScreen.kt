@@ -8,6 +8,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,13 +18,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountCircle
@@ -46,12 +53,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -75,34 +85,38 @@ fun OnboardingScreen(
     onCompleteOnboarding: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var step by remember { mutableIntStateOf(1) }
-    var userNameInput by remember { mutableStateOf(userPreferences.userName) }
+    var step by rememberSaveable { mutableIntStateOf(1) }
+    var userNameInput by rememberSaveable { mutableStateOf(userPreferences.userName) }
+
+    fun completeAndGoHome() {
+        userPreferences.hasCompletedOnboarding = true
+        onCompleteOnboarding()
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { _ ->
         // On granted or denied, complete onboarding and proceed to Home
-        userPreferences.hasCompletedOnboarding = true
-        onCompleteOnboarding()
+        completeAndGoHome()
+    }
+
+    fun proceedFromStep2() {
+        val trimmed = userNameInput.trim()
+        val finalName = if (trimmed.isNotEmpty()) trimmed else "You"
+        userPreferences.userName = finalName
+        step = 3
     }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Step Progress Indicator
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            // Step Progress Indicator at top
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp),
+                    .statusBarsPadding()
+                    .padding(top = 16.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -117,28 +131,15 @@ fun OnboardingScreen(
                     if (i < 3) Spacer(modifier = Modifier.width(8.dp))
                 }
             }
-
-            // Screen Content animated between steps
-            AnimatedContent(
-                targetState = step,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "onboarding_step"
-            ) { currentStep ->
-                when (currentStep) {
-                    1 -> OnboardingIntroStep()
-                    2 -> OnboardingNameStep(
-                        name = userNameInput,
-                        onNameChange = { userNameInput = it }
-                    )
-                    3 -> OnboardingPermissionStep()
-                }
-            }
-
-            // Bottom Buttons
+        },
+        bottomBar = {
+            // Pinned Bottom Action Button Bar - Guaranteed visible and clickable
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (step) {
@@ -151,6 +152,7 @@ fun OnboardingScreen(
                                 .fillMaxWidth()
                                 .height(56.dp)
                                 .testTag("button_intro_get_started")
+                                .semantics { testTag = "button_next" }
                         ) {
                             Text("Get Started", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.width(8.dp))
@@ -163,18 +165,11 @@ fun OnboardingScreen(
                     }
                     2 -> {
                         Button(
-                            onClick = {
-                                val trimmed = userNameInput.trim()
-                                if (trimmed.isNotEmpty()) {
-                                    userPreferences.userName = trimmed
-                                    step = 3
-                                }
-                            },
-                            enabled = userNameInput.trim().isNotEmpty(),
+                            onClick = { proceedFromStep2() },
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = EmeraldGreen,
-                                disabledContainerColor = Slate200
+                                contentColor = Color.White
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -207,14 +202,14 @@ fun OnboardingScreen(
                             Text("Allow Contacts Access", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         TextButton(
-                            onClick = {
-                                userPreferences.hasCompletedOnboarding = true
-                                onCompleteOnboarding()
-                            },
-                            modifier = Modifier.testTag("button_skip_contacts")
+                            onClick = { completeAndGoHome() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .testTag("button_skip_contacts")
                         ) {
                             Text(
                                 text = "Skip for now",
@@ -227,15 +222,52 @@ fun OnboardingScreen(
                 }
             }
         }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            AnimatedContent(
+                targetState = step,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "onboarding_step",
+                modifier = Modifier.fillMaxSize()
+            ) { currentStep ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    when (currentStep) {
+                        1 -> OnboardingIntroStep(onTap = { step = 2 })
+                        2 -> OnboardingNameStep(
+                            name = userNameInput,
+                            onNameChange = { userNameInput = it },
+                            onDone = { proceedFromStep2() }
+                        )
+                        3 -> OnboardingPermissionStep()
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun OnboardingIntroStep() {
+private fun OnboardingIntroStep(onTap: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onTap
+            )
+            .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -253,7 +285,7 @@ private fun OnboardingIntroStep() {
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "Phittoos",
@@ -277,7 +309,7 @@ private fun OnboardingIntroStep() {
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Text(
             text = "Track money between you and your friends. No bank linking. No group setup.",
@@ -294,12 +326,13 @@ private fun OnboardingIntroStep() {
 @Composable
 private fun OnboardingNameStep(
     name: String,
-    onNameChange: (String) -> Unit
+    onNameChange: (String) -> Unit,
+    onDone: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp),
+            .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -317,7 +350,7 @@ private fun OnboardingNameStep(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Text(
             text = "What's your name?",
@@ -337,7 +370,7 @@ private fun OnboardingNameStep(
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(28.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
             value = name,
@@ -349,11 +382,17 @@ private fun OnboardingNameStep(
                 capitalization = KeyboardCapitalization.Words,
                 imeAction = ImeAction.Done
             ),
+            keyboardActions = KeyboardActions(onDone = { onDone() }),
             colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Slate900,
+                unfocusedTextColor = Slate900,
+                cursorColor = EmeraldGreen,
+                focusedBorderColor = EmeraldGreen,
+                unfocusedBorderColor = Slate200,
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                focusedBorderColor = EmeraldGreen,
-                unfocusedBorderColor = Slate200
+                focusedPlaceholderColor = Slate400,
+                unfocusedPlaceholderColor = Slate400
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -375,7 +414,7 @@ private fun OnboardingPermissionStep() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 24.dp),
+            .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -393,7 +432,7 @@ private fun OnboardingPermissionStep() {
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Text(
             text = "Pick friends faster",
@@ -403,7 +442,7 @@ private fun OnboardingPermissionStep() {
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = "Optional contact permission to make adding friends instant. You can also add them manually anytime.",
@@ -414,7 +453,7 @@ private fun OnboardingPermissionStep() {
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Card(
             shape = RoundedCornerShape(16.dp),
@@ -442,3 +481,4 @@ private fun OnboardingPermissionStep() {
         }
     }
 }
+

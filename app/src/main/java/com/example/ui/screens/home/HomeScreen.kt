@@ -159,7 +159,7 @@ fun HomeScreen(
 
                 items(
                     items = uiState.friends,
-                    key = { it.friend.id }
+                    key = { "friend_${it.friend.id}" }
                 ) { friendWithBalance ->
                     FriendRowItem(
                         friendWithBalance = friendWithBalance,
@@ -183,7 +183,7 @@ fun HomeScreen(
 
                 items(
                     items = uiState.recentActivity,
-                    key = { it.transaction.id }
+                    key = { "activity_${it.transaction.id}" }
                 ) { activityItem ->
                     RecentActivityRow(
                         item = activityItem,
@@ -437,10 +437,15 @@ private fun SearchAndFilterBar(
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Slate900,
+                unfocusedTextColor = Slate900,
+                cursorColor = EmeraldGreen,
+                focusedBorderColor = EmeraldGreen,
+                unfocusedBorderColor = Slate200,
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                focusedBorderColor = EmeraldGreen,
-                unfocusedBorderColor = Slate200
+                focusedPlaceholderColor = Slate400,
+                unfocusedPlaceholderColor = Slate400
             )
         )
 
@@ -790,6 +795,7 @@ private fun QuickAddFriendDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = Color.White,
         title = {
             Text(
                 "Add Friend",
@@ -816,7 +822,17 @@ private fun QuickAddFriendDialog(
                         .fillMaxWidth()
                         .testTag("dialog_friend_name_input"),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldGreen
+                        focusedTextColor = Slate900,
+                        unfocusedTextColor = Slate900,
+                        cursorColor = EmeraldGreen,
+                        focusedBorderColor = EmeraldGreen,
+                        unfocusedBorderColor = Slate200,
+                        focusedLabelColor = EmeraldGreen,
+                        unfocusedLabelColor = Slate500,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedPlaceholderColor = Slate400,
+                        unfocusedPlaceholderColor = Slate400
                     )
                 )
             }

@@ -336,8 +336,15 @@ fun AddTransactionScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Slate900,
+                            unfocusedTextColor = Slate900,
+                            cursorColor = EmeraldGreen,
                             focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Slate200
+                            unfocusedBorderColor = Slate200,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedPlaceholderColor = Slate400,
+                            unfocusedPlaceholderColor = Slate400
                         )
                     )
 
@@ -549,8 +556,15 @@ fun AddTransactionScreen(
                             ),
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Slate900,
+                                unfocusedTextColor = Slate900,
+                                cursorColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreen else CoralOrange,
                                 focusedBorderColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreen else CoralOrange,
-                                unfocusedBorderColor = Slate200
+                                unfocusedBorderColor = Slate200,
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                focusedPlaceholderColor = Slate400,
+                                unfocusedPlaceholderColor = Slate400
                             )
                         )
                     }
@@ -614,8 +628,15 @@ fun AddTransactionScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Slate900,
+                            unfocusedTextColor = Slate900,
+                            cursorColor = EmeraldGreen,
                             focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Slate200
+                            unfocusedBorderColor = Slate200,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedPlaceholderColor = Slate400,
+                            unfocusedPlaceholderColor = Slate400
                         )
                     )
                 }

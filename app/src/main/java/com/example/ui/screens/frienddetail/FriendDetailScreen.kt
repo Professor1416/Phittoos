@@ -229,7 +229,7 @@ fun FriendDetailScreen(
                 } else {
                     items(
                         items = uiState.timeline,
-                        key = { it.id }
+                        key = { "timeline_${it.id}" }
                     ) { tx ->
                         TimelineTransactionItem(
                             tx = tx,
