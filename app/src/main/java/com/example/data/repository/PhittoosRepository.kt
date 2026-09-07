@@ -8,6 +8,7 @@ import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
 import com.example.data.model.TransactionWithFriend
+import com.example.data.model.dueInfo
 import com.example.data.model.effectiveRemainingAmount
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -42,10 +43,14 @@ class PhittoosRepository(
             val friendTxs = txByFriend[friend.id] ?: emptyList()
             var net = 0.0
             var openCount = 0
+            var overdueCount = 0
 
             for (tx in friendTxs) {
                 if (tx.status == TransactionStatus.OPEN) {
                     openCount++
+                    if (tx.dueInfo.isActivelyOverdue) {
+                        overdueCount++
+                    }
                     val effectiveAmount = tx.effectiveRemainingAmount
                     if (tx.direction == TransactionDirection.LENT) {
                         net += effectiveAmount
@@ -62,7 +67,8 @@ class PhittoosRepository(
                 netBalance = net,
                 lastActivityDate = lastActivity,
                 openTransactionsCount = openCount,
-                totalTransactionsCount = friendTxs.size
+                totalTransactionsCount = friendTxs.size,
+                overdueTransactionsCount = overdueCount
             )
         }
     }
@@ -122,10 +128,14 @@ class PhittoosRepository(
 
         var net = 0.0
         var openCount = 0
+        var overdueCount = 0
 
         for (tx in friendTxs) {
             if (tx.status == TransactionStatus.OPEN) {
                 openCount++
+                if (tx.dueInfo.isActivelyOverdue) {
+                    overdueCount++
+                }
                 val effectiveAmount = tx.effectiveRemainingAmount
                 if (tx.direction == TransactionDirection.LENT) {
                     net += effectiveAmount
@@ -142,9 +152,16 @@ class PhittoosRepository(
             netBalance = net,
             lastActivityDate = lastActivity,
             openTransactionsCount = openCount,
-            totalTransactionsCount = friendTxs.size
+            totalTransactionsCount = friendTxs.size,
+            overdueTransactionsCount = overdueCount
         )
     }
+
+    val openTransactionsWithDueDate: Flow<List<TransactionEntity>> =
+        transactionDao.getOpenTransactionsWithDueDate()
+
+    suspend fun getOpenTransactionsWithDueDate(): List<TransactionEntity> =
+        transactionDao.getOpenTransactionsWithDueDateList()
 
     suspend fun insertFriend(name: String, contactInfo: String? = null): Long {
         val trimmed = name.trim()

@@ -5,5 +5,6 @@ data class FriendWithBalance(
     val netBalance: Double, // > 0: friend owes user, < 0: user owes friend, == 0: settled
     val lastActivityDate: Long?,
     val openTransactionsCount: Int,
-    val totalTransactionsCount: Int
+    val totalTransactionsCount: Int,
+    val overdueTransactionsCount: Int = 0
 )

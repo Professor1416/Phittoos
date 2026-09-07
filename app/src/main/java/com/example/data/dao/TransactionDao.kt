@@ -27,6 +27,12 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE friend_id = :friendId AND status = 'OPEN'")
     suspend fun getOpenTransactionsForFriend(friendId: Long): List<TransactionEntity>
 
+    @Query("SELECT * FROM transactions WHERE status = 'OPEN' AND due_date IS NOT NULL ORDER BY due_date ASC")
+    fun getOpenTransactionsWithDueDate(): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM transactions WHERE status = 'OPEN' AND due_date IS NOT NULL ORDER BY due_date ASC")
+    suspend fun getOpenTransactionsWithDueDateList(): List<TransactionEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity): Long
 

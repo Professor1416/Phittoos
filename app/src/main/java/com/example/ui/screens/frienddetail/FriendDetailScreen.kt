@@ -70,8 +70,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
+import com.example.data.model.dueInfo
 import com.example.data.model.effectivePaidAmount
 import com.example.data.model.effectiveRemainingAmount
+import com.example.domain.DueDateHelper
+import com.example.domain.DueState
 import com.example.ui.components.AvatarInitial
 import com.example.ui.theme.Amber100
 import com.example.ui.theme.Amber700
@@ -549,7 +552,8 @@ private fun TimelineTransactionItem(
 ) {
     val isLent = tx.direction == TransactionDirection.LENT
     val isConfirmed = tx.status == TransactionStatus.CONFIRMED
-    val isOverdue = !isConfirmed && tx.dueDate != null && tx.dueDate < System.currentTimeMillis()
+    val dueInfo = tx.dueInfo
+    val isOverdue = dueInfo.isActivelyOverdue
     val effectivePaid = tx.effectivePaidAmount
     val remaining = tx.effectiveRemainingAmount
     val isPartiallyPaid = !isConfirmed && effectivePaid > 0.0
@@ -783,19 +787,38 @@ private fun TimelineTransactionItem(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (tx.dueDate != null) {
-                        Text(
-                            text = "Due: ${Formatters.formatFullDate(tx.dueDate)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isOverdue) Red600 else Slate500,
-                            fontWeight = if (isOverdue) FontWeight.Bold else FontWeight.Normal
-                        )
-                    } else {
-                        Text(
-                            text = "No due date",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Slate400
-                        )
+                    when (dueInfo.state) {
+                        DueState.OVERDUE -> {
+                            Text(
+                                text = dueInfo.formattedStatus,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Red600,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        DueState.DUE_TODAY -> {
+                            Text(
+                                text = "Due today",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Amber700,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        DueState.UPCOMING -> {
+                            Text(
+                                text = dueInfo.formattedStatus,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Slate600,
+                                fontWeight = FontWeight.Normal
+                            )
+                        }
+                        DueState.NONE -> {
+                            Text(
+                                text = "No due date",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Slate400
+                            )
+                        }
                     }
 
                     Row(
@@ -824,6 +847,20 @@ private fun TimelineTransactionItem(
                                 .testTag("button_settle_${tx.id}")
                         )
                     }
+                }
+            } else if (tx.dueDate != null) {
+                // Historical due date on settled transaction (active overdue removed)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Due ${DueDateHelper.formatDueDate(tx.dueDate)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Slate400
+                    )
                 }
             }
         }

@@ -596,6 +596,15 @@ private fun FriendRowItem(
                         )
                     }
                 }
+
+                if (friendWithBalance.overdueTransactionsCount > 0) {
+                    Text(
+                        text = "${friendWithBalance.overdueTransactionsCount} overdue",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CoralOrangeDark,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(4.dp))

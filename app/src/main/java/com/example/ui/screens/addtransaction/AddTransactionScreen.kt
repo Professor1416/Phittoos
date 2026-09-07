@@ -3,6 +3,7 @@ package com.example.ui.screens.addtransaction
 import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
@@ -54,6 +56,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -80,6 +83,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Friend
 import com.example.data.model.TransactionDirection
+import com.example.domain.DueDateHelper
 import com.example.ui.components.AvatarInitial
 import com.example.ui.theme.CoralOrange
 import com.example.ui.theme.CoralOrangeDark
@@ -93,6 +97,7 @@ import com.example.ui.theme.Slate100
 import com.example.ui.theme.Slate200
 import com.example.ui.theme.Slate400
 import com.example.ui.theme.Slate500
+import com.example.ui.theme.Slate600
 import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate800
 import com.example.ui.theme.Slate900
@@ -165,7 +170,11 @@ fun AddTransactionScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    val isReady = uiState.selectedFriend != null && uiState.amount.toDoubleOrNull()?.let { it > 0 } == true
+                    val currentDueDate = uiState.dueDate
+                    val isDueDateValid = currentDueDate == null || !DueDateHelper.isPastDate(currentDueDate)
+                    val isReady = uiState.selectedFriend != null &&
+                        uiState.amount.toDoubleOrNull()?.let { it > 0 } == true &&
+                        isDueDateValid
 
                     Button(
                         onClick = {
@@ -660,59 +669,134 @@ fun AddTransactionScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val isNoDueDate = uiState.dueDate == null
+                    val isDueDateSelected = uiState.dueDate != null
+                    val isPast = isDueDateSelected && DueDateHelper.isPastDate(uiState.dueDate!!)
 
-                        // "No due date" Chip
-                        FilterChip(
-                            selected = isNoDueDate,
-                            onClick = { viewModel.setDueDate(null) },
-                            label = { Text("No due date") },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Slate900,
-                                selectedLabelColor = Color.White
-                            )
-                        )
-
-                        // Calendar Picker Button
-                        OutlinedButton(
-                            onClick = {
-                                val cal = Calendar.getInstance()
-                                if (uiState.dueDate != null) {
-                                    cal.timeInMillis = uiState.dueDate!!
+                    fun showDatePicker() {
+                        val cal = Calendar.getInstance()
+                        if (uiState.dueDate != null) {
+                            cal.timeInMillis = uiState.dueDate!!
+                        }
+                        val picker = DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                val selectedCal = Calendar.getInstance().apply {
+                                    set(Calendar.YEAR, year)
+                                    set(Calendar.MONTH, month)
+                                    set(Calendar.DAY_OF_MONTH, day)
+                                    set(Calendar.HOUR_OF_DAY, 12)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
                                 }
-                                DatePickerDialog(
-                                    context,
-                                    { _, year, month, day ->
-                                        val selectedCal = Calendar.getInstance().apply {
-                                            set(year, month, day, 23, 59, 59)
-                                        }
-                                        viewModel.setDueDate(selectedCal.timeInMillis)
-                                    },
-                                    cal.get(Calendar.YEAR),
-                                    cal.get(Calendar.MONTH),
-                                    cal.get(Calendar.DAY_OF_MONTH)
-                                ).show()
+                                viewModel.setDueDate(selectedCal.timeInMillis)
                             },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.testTag("button_pick_due_date")
+                            cal.get(Calendar.YEAR),
+                            cal.get(Calendar.MONTH),
+                            cal.get(Calendar.DAY_OF_MONTH)
+                        )
+                        picker.datePicker.minDate = System.currentTimeMillis() - 1000
+                        picker.show()
+                    }
+
+                    if (!isDueDateSelected) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Default.CalendarToday,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = if (uiState.dueDate != null) EmeraldGreenDark else Slate500
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Slate100,
+                                modifier = Modifier.testTag("chip_no_due_date")
+                            ) {
+                                Text(
+                                    text = "No due date",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Slate600,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = { showDatePicker() },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.testTag("button_pick_due_date")
+                            ) {
+                                Icon(
+                                    Icons.Default.CalendarToday,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Slate700
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Pick date",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Slate800
+                                )
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = { showDatePicker() },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = if (isPast) Color(0xFFFEE2E2) else EmeraldGreenSurface
+                                ),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isPast) Color(0xFFDC2626) else EmeraldGreen
+                                ),
+                                modifier = Modifier.testTag("button_pick_due_date")
+                            ) {
+                                Icon(
+                                    Icons.Default.CalendarToday,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = if (isPast) Color(0xFFDC2626) else EmeraldGreenDark
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = Formatters.formatFullDate(uiState.dueDate),
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isPast) Color(0xFFDC2626) else EmeraldGreenDark
+                                )
+                            }
+
+                            TextButton(
+                                onClick = { viewModel.setDueDate(null) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.testTag("button_remove_due_date")
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove due date",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Slate500
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Remove",
+                                    color = Slate600,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        if (isPast) {
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = if (uiState.dueDate != null) Formatters.formatFullDate(uiState.dueDate) else "Pick date",
-                                fontWeight = if (uiState.dueDate != null) FontWeight.Bold else FontWeight.Normal,
-                                color = if (uiState.dueDate != null) EmeraldGreenDark else Slate700
+                                text = "Due date cannot be in the past.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFDC2626),
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }

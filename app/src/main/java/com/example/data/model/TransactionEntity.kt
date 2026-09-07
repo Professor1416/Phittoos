@@ -46,3 +46,6 @@ val TransactionEntity.effectiveRemainingAmount: Double
 val TransactionEntity.effectivePaidAmount: Double
     get() = (paidAmount ?: 0.0).coerceIn(0.0, amount)
 
+val TransactionEntity.dueInfo: com.example.domain.DueDateInfo
+    get() = com.example.domain.DueDateHelper.calculateDueState(dueDate, status)
+

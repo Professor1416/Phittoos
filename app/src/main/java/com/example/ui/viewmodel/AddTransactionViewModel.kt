@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.model.Friend
 import com.example.data.model.TransactionDirection
 import com.example.data.repository.PhittoosRepository
+import com.example.domain.DueDateHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -131,7 +132,21 @@ class AddTransactionViewModel(
     }
 
     fun setDueDate(dateMillis: Long?) {
-        _form.update { it.copy(dueDate = dateMillis) }
+        if (dateMillis != null && DueDateHelper.isPastDate(dateMillis)) {
+            _form.update {
+                it.copy(
+                    dueDate = dateMillis,
+                    errorMessage = "Due date cannot be in the past."
+                )
+            }
+        } else {
+            _form.update {
+                it.copy(
+                    dueDate = dateMillis,
+                    errorMessage = if (it.errorMessage == "Due date cannot be in the past.") null else it.errorMessage
+                )
+            }
+        }
     }
 
     fun saveTransaction(onSuccess: (toastMessage: String) -> Unit) {
@@ -145,6 +160,11 @@ class AddTransactionViewModel(
         val amountVal = currentForm.amount.toDoubleOrNull()
         if (amountVal == null || amountVal <= 0) {
             _form.update { it.copy(errorMessage = "Please enter a valid amount") }
+            return
+        }
+
+        if (currentForm.dueDate != null && DueDateHelper.isPastDate(currentForm.dueDate)) {
+            _form.update { it.copy(errorMessage = "Due date cannot be in the past.") }
             return
         }
 
