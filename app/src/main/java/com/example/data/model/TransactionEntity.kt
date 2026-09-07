@@ -34,7 +34,9 @@ data class TransactionEntity(
     val dueDate: Long? = null,
     val status: TransactionStatus = TransactionStatus.OPEN,
     @ColumnInfo(name = "paid_amount")
-    val paidAmount: Double? = null
+    val paidAmount: Double? = null,
+    @ColumnInfo(name = "settled_at")
+    val settledAt: Long? = null
 )
 
 val TransactionEntity.effectiveRemainingAmount: Double

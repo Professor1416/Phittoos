@@ -42,12 +42,12 @@ interface TransactionDao {
     @Delete
     suspend fun deleteTransaction(transaction: TransactionEntity)
 
-    @Query("UPDATE transactions SET paid_amount = :newPaidAmount, status = :newStatus WHERE id = :id AND status = 'OPEN'")
-    suspend fun updateRepayment(id: Long, newPaidAmount: Double, newStatus: TransactionStatus): Int
+    @Query("UPDATE transactions SET paid_amount = :newPaidAmount, status = :newStatus, settled_at = :settledAt WHERE id = :id AND status = 'OPEN'")
+    suspend fun updateRepayment(id: Long, newPaidAmount: Double, newStatus: TransactionStatus, settledAt: Long?): Int
 
-    @Query("UPDATE transactions SET status = 'CONFIRMED', paid_amount = amount WHERE id = :id AND status = 'OPEN'")
-    suspend fun markAsConfirmed(id: Long)
+    @Query("UPDATE transactions SET status = 'CONFIRMED', paid_amount = amount, settled_at = :settledAt WHERE id = :id AND status = 'OPEN'")
+    suspend fun markAsConfirmed(id: Long, settledAt: Long)
 
-    @Query("UPDATE transactions SET status = 'CONFIRMED', paid_amount = amount WHERE friend_id = :friendId AND status = 'OPEN'")
-    suspend fun markAllOpenForFriendAsConfirmed(friendId: Long)
+    @Query("UPDATE transactions SET status = 'CONFIRMED', paid_amount = amount, settled_at = :settledAt WHERE friend_id = :friendId AND status = 'OPEN'")
+    suspend fun markAllOpenForFriendAsConfirmed(friendId: Long, settledAt: Long)
 }

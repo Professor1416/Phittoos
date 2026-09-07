@@ -10,6 +10,8 @@ import com.example.data.model.TransactionStatus
 import com.example.data.model.effectiveRemainingAmount
 import com.example.data.repository.PhittoosRepository
 import com.example.data.repository.RepaymentResult
+import com.example.domain.ReliabilityEngine
+import com.example.domain.ReliabilityInfo
 import com.example.ui.util.Formatters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,7 +39,8 @@ data class FriendDetailUiState(
     val bulkSettlementTotalRemaining: Double = 0.0,
     val bulkSettlementOpenCount: Int = 0,
     val settlingTransactionIds: Set<Long> = emptySet(),
-    val isBulkSettling: Boolean = false
+    val isBulkSettling: Boolean = false,
+    val reliabilityInfo: ReliabilityInfo = ReliabilityInfo.NEW
 )
 
 class FriendDetailViewModel(
@@ -99,6 +102,8 @@ class FriendDetailViewModel(
             }
         }
 
+        val reliability = ReliabilityEngine.calculate(transactions)
+
         FriendDetailUiState(
             friend = friend,
             netBalance = net,
@@ -110,7 +115,8 @@ class FriendDetailViewModel(
             bulkSettlementTotalRemaining = bulkRemaining,
             bulkSettlementOpenCount = bulkCount,
             settlingTransactionIds = settlingIds,
-            isBulkSettling = isBulkSettling
+            isBulkSettling = isBulkSettling,
+            reliabilityInfo = reliability
         )
     }.stateIn(
         scope = viewModelScope,

@@ -10,6 +10,7 @@ import com.example.data.model.TransactionStatus
 import com.example.data.model.TransactionWithFriend
 import com.example.data.model.dueInfo
 import com.example.data.model.effectiveRemainingAmount
+import com.example.domain.ReliabilityEngine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -61,6 +62,7 @@ class PhittoosRepository(
             }
 
             val lastActivity = friendTxs.maxOfOrNull { it.createdDate }
+            val reliability = ReliabilityEngine.calculate(friendTxs)
 
             FriendWithBalance(
                 friend = friend,
@@ -68,7 +70,8 @@ class PhittoosRepository(
                 lastActivityDate = lastActivity,
                 openTransactionsCount = openCount,
                 totalTransactionsCount = friendTxs.size,
-                overdueTransactionsCount = overdueCount
+                overdueTransactionsCount = overdueCount,
+                reliabilityInfo = reliability
             )
         }
     }
@@ -146,6 +149,7 @@ class PhittoosRepository(
         }
 
         val lastActivity = friendTxs.maxOfOrNull { it.createdDate }
+        val reliability = ReliabilityEngine.calculate(friendTxs)
 
         FriendWithBalance(
             friend = friend,
@@ -153,7 +157,8 @@ class PhittoosRepository(
             lastActivityDate = lastActivity,
             openTransactionsCount = openCount,
             totalTransactionsCount = friendTxs.size,
-            overdueTransactionsCount = overdueCount
+            overdueTransactionsCount = overdueCount,
+            reliabilityInfo = reliability
         )
     }
 
@@ -197,7 +202,11 @@ class PhittoosRepository(
         return transactionDao.getTransactionById(transactionId)
     }
 
-    suspend fun recordRepayment(transactionId: Long, repaymentAmount: Double): RepaymentResult {
+    suspend fun recordRepayment(
+        transactionId: Long,
+        repaymentAmount: Double,
+        settledAt: Long = System.currentTimeMillis()
+    ): RepaymentResult {
         if (repaymentAmount <= 0.0 || repaymentAmount.isNaN() || repaymentAmount.isInfinite()) {
             return RepaymentResult.Error("Repayment amount must be greater than ₹0")
         }
@@ -221,21 +230,28 @@ class PhittoosRepository(
 
         val finalPaid = if (isFullySettled) tx.amount else newPaid.coerceAtMost(tx.amount)
         val finalStatus = if (isFullySettled) TransactionStatus.CONFIRMED else TransactionStatus.OPEN
+        val settledTimestamp = if (isFullySettled) settledAt else null
 
-        val rowsUpdated = transactionDao.updateRepayment(transactionId, finalPaid, finalStatus)
+        val rowsUpdated = transactionDao.updateRepayment(transactionId, finalPaid, finalStatus, settledTimestamp)
         if (rowsUpdated == 0) {
             return RepaymentResult.Error("Transaction is no longer open")
         }
 
-        val updatedTx = tx.copy(paidAmount = finalPaid, status = finalStatus)
+        val updatedTx = tx.copy(paidAmount = finalPaid, status = finalStatus, settledAt = settledTimestamp)
         return RepaymentResult.Success(updatedTx, isFullySettled)
     }
 
-    suspend fun markTransactionAsPaid(transactionId: Long) {
-        transactionDao.markAsConfirmed(transactionId)
+    suspend fun markTransactionAsPaid(
+        transactionId: Long,
+        settledAt: Long = System.currentTimeMillis()
+    ) {
+        transactionDao.markAsConfirmed(transactionId, settledAt)
     }
 
-    suspend fun settleAllSameDirectionForFriend(friendId: Long): Boolean {
+    suspend fun settleAllSameDirectionForFriend(
+        friendId: Long,
+        settledAt: Long = System.currentTimeMillis()
+    ): Boolean {
         val openTxs = transactionDao.getOpenTransactionsForFriend(friendId)
         if (openTxs.isEmpty()) return false
         val hasLent = openTxs.any { it.direction == TransactionDirection.LENT }
@@ -244,12 +260,15 @@ class PhittoosRepository(
             // Mixed direction safety guard: do NOT bulk-settle when transactions are in both directions
             return false
         }
-        transactionDao.markAllOpenForFriendAsConfirmed(friendId)
+        transactionDao.markAllOpenForFriendAsConfirmed(friendId, settledAt)
         return true
     }
 
-    suspend fun markAllForFriendAsPaid(friendId: Long): Boolean {
-        return settleAllSameDirectionForFriend(friendId)
+    suspend fun markAllForFriendAsPaid(
+        friendId: Long,
+        settledAt: Long = System.currentTimeMillis()
+    ): Boolean {
+        return settleAllSameDirectionForFriend(friendId, settledAt)
     }
 
     suspend fun getRecentFriends(limit: Int = 6): List<Friend> {

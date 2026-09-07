@@ -140,6 +140,39 @@ object DueDateHelper {
     }
 
     /**
+     * Calculates delay in calendar days between due date and settlement date.
+     * Early repayment (settled before or on due date) returns 0.
+     * Negative delay is never returned.
+     */
+    fun calculateDelayDays(
+        dueDateMillis: Long,
+        settledAtMillis: Long,
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): Int {
+        val dueCal = Calendar.getInstance(timeZone).apply {
+            timeInMillis = dueDateMillis
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val settledCal = Calendar.getInstance(timeZone).apply {
+            timeInMillis = settledAtMillis
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        if (!settledCal.after(dueCal)) {
+            return 0
+        }
+
+        val diffMillis = settledCal.timeInMillis - dueCal.timeInMillis
+        return Math.round(diffMillis.toDouble() / 86_400_000.0).toInt().coerceAtLeast(1)
+    }
+
+    /**
      * Formats a due date into a concise string, e.g. "15 Sep" or "15 Sep 2027".
      */
     fun formatDueDate(

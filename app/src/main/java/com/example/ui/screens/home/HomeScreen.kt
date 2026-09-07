@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import com.example.ui.components.ReliabilityPill
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -515,20 +516,7 @@ private fun FriendRowItem(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Static "New" reliability placeholder tag as specified in PRD
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = Slate100,
-                        modifier = Modifier.padding(2.dp)
-                    ) {
-                        Text(
-                            text = "New",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Slate500,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
+                    ReliabilityPill(level = friendWithBalance.reliabilityInfo.level)
                 }
 
                 Spacer(modifier = Modifier.height(3.dp))

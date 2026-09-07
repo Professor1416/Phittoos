@@ -43,6 +43,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import com.example.domain.ReliabilityInfo
+import com.example.ui.components.FriendDetailReliabilitySection
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -174,7 +176,8 @@ fun FriendDetailScreen(
                     FriendDetailHeader(
                         friendName = friend.name,
                         netBalance = net,
-                        openTransactionsCount = uiState.openTransactionsCount
+                        openTransactionsCount = uiState.openTransactionsCount,
+                        reliabilityInfo = uiState.reliabilityInfo
                     )
                 }
 
@@ -354,7 +357,8 @@ fun FriendDetailScreen(
 private fun FriendDetailHeader(
     friendName: String,
     netBalance: Double,
-    openTransactionsCount: Int
+    openTransactionsCount: Int,
+    reliabilityInfo: ReliabilityInfo
 ) {
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -453,34 +457,8 @@ private fun FriendDetailHeader(
             HorizontalDivider(color = Slate200.copy(alpha = 0.6f))
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Reliability Tag Area (Placeholder "New" for Phase 1 per PRD)
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Slate100)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = EmeraldGreen
-                ) {
-                    Text(
-                        text = "New",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Usually pays back within 4 days (Placeholder)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate700,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            // Private Reliability Section
+            FriendDetailReliabilitySection(reliability = reliabilityInfo)
         }
     }
 }
