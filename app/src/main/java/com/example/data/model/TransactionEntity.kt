@@ -42,3 +42,7 @@ val TransactionEntity.effectiveRemainingAmount: Double
         val validPaid = (paidAmount ?: 0.0).coerceIn(0.0, amount)
         return (amount - validPaid).coerceAtLeast(0.0)
     }
+
+val TransactionEntity.effectivePaidAmount: Double
+    get() = (paidAmount ?: 0.0).coerceIn(0.0, amount)
+

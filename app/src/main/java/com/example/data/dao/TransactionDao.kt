@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.data.model.TransactionEntity
+import com.example.data.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -35,9 +36,12 @@ interface TransactionDao {
     @Delete
     suspend fun deleteTransaction(transaction: TransactionEntity)
 
-    @Query("UPDATE transactions SET status = 'CONFIRMED' WHERE id = :id AND status = 'OPEN'")
+    @Query("UPDATE transactions SET paid_amount = :newPaidAmount, status = :newStatus WHERE id = :id AND status = 'OPEN'")
+    suspend fun updateRepayment(id: Long, newPaidAmount: Double, newStatus: TransactionStatus): Int
+
+    @Query("UPDATE transactions SET status = 'CONFIRMED', paid_amount = amount WHERE id = :id AND status = 'OPEN'")
     suspend fun markAsConfirmed(id: Long)
 
-    @Query("UPDATE transactions SET status = 'CONFIRMED' WHERE friend_id = :friendId AND status = 'OPEN'")
+    @Query("UPDATE transactions SET status = 'CONFIRMED', paid_amount = amount WHERE friend_id = :friendId AND status = 'OPEN'")
     suspend fun markAllOpenForFriendAsConfirmed(friendId: Long)
 }

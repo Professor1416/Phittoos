@@ -13,6 +13,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
+sealed class RepaymentResult {
+    data class Success(
+        val updatedTransaction: TransactionEntity,
+        val isFullySettled: Boolean
+    ) : RepaymentResult()
+
+    data class Error(
+        val message: String
+    ) : RepaymentResult()
+}
+
 class PhittoosRepository(
     private val friendDao: FriendDao,
     private val transactionDao: TransactionDao
@@ -150,8 +161,8 @@ class PhittoosRepository(
         friendId: Long,
         amount: Double,
         direction: TransactionDirection,
-        note: String?,
-        dueDate: Long?
+        note: String? = null,
+        dueDate: Long? = null
     ): Long {
         return transactionDao.insertTransaction(
             TransactionEntity(
@@ -167,6 +178,40 @@ class PhittoosRepository(
 
     suspend fun getTransactionById(transactionId: Long): TransactionEntity? {
         return transactionDao.getTransactionById(transactionId)
+    }
+
+    suspend fun recordRepayment(transactionId: Long, repaymentAmount: Double): RepaymentResult {
+        if (repaymentAmount <= 0.0 || repaymentAmount.isNaN() || repaymentAmount.isInfinite()) {
+            return RepaymentResult.Error("Repayment amount must be greater than ₹0")
+        }
+
+        val tx = transactionDao.getTransactionById(transactionId)
+            ?: return RepaymentResult.Error("Transaction not found")
+
+        if (tx.status != TransactionStatus.OPEN) {
+            return RepaymentResult.Error("Transaction is already settled")
+        }
+
+        val remaining = tx.effectiveRemainingAmount
+        if (repaymentAmount > remaining + 0.0001) {
+            return RepaymentResult.Error("Amount exceeds remaining balance of $remaining")
+        }
+
+        val currentEffectivePaid = (tx.paidAmount ?: 0.0).coerceIn(0.0, tx.amount)
+        val unroundedPaid = currentEffectivePaid + repaymentAmount
+        val newPaid = kotlin.math.round(unroundedPaid * 100.0) / 100.0
+        val isFullySettled = newPaid >= tx.amount - 0.005
+
+        val finalPaid = if (isFullySettled) tx.amount else newPaid.coerceAtMost(tx.amount)
+        val finalStatus = if (isFullySettled) TransactionStatus.CONFIRMED else TransactionStatus.OPEN
+
+        val rowsUpdated = transactionDao.updateRepayment(transactionId, finalPaid, finalStatus)
+        if (rowsUpdated == 0) {
+            return RepaymentResult.Error("Transaction is no longer open")
+        }
+
+        val updatedTx = tx.copy(paidAmount = finalPaid, status = finalStatus)
+        return RepaymentResult.Success(updatedTx, isFullySettled)
     }
 
     suspend fun markTransactionAsPaid(transactionId: Long) {

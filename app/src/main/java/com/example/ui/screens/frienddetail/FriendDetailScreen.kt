@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
@@ -40,9 +41,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -58,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,8 +70,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
+import com.example.data.model.effectivePaidAmount
 import com.example.data.model.effectiveRemainingAmount
 import com.example.ui.components.AvatarInitial
+import com.example.ui.theme.Amber100
+import com.example.ui.theme.Amber700
 import com.example.ui.theme.CoralOrange
 import com.example.ui.theme.CoralOrangeDark
 import com.example.ui.theme.CoralOrangeSurface
@@ -80,6 +87,7 @@ import com.example.ui.theme.Slate100
 import com.example.ui.theme.Slate200
 import com.example.ui.theme.Slate400
 import com.example.ui.theme.Slate500
+import com.example.ui.theme.Slate600
 import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate900
 import com.example.ui.util.Formatters
@@ -99,6 +107,7 @@ fun FriendDetailScreen(
     val context = LocalContext.current
 
     var txToSettle by remember { mutableStateOf<TransactionEntity?>(null) }
+    var txToRepay by remember { mutableStateOf<TransactionEntity?>(null) }
     var showBulkSettlementDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.toastMessage) {
@@ -286,10 +295,25 @@ fun FriendDetailScreen(
                     ) { tx ->
                         TimelineTransactionItem(
                             tx = tx,
-                            onSettleClick = { txToSettle = tx }
+                            onSettleClick = { txToSettle = tx },
+                            onRepayClick = { txToRepay = tx }
                         )
                     }
                 }
+            }
+
+            // Contextual Repayment Dialog
+            txToRepay?.let { tx ->
+                RepaymentDialog(
+                    friendName = friend.name,
+                    tx = tx,
+                    onConfirm = { amount ->
+                        val id = tx.id
+                        txToRepay = null
+                        viewModel.recordRepayment(id, amount)
+                    },
+                    onDismiss = { txToRepay = null }
+                )
             }
 
             // Contextual Individual Settlement Dialog
@@ -520,11 +544,15 @@ private fun ActionRow(
 @Composable
 private fun TimelineTransactionItem(
     tx: TransactionEntity,
-    onSettleClick: () -> Unit
+    onSettleClick: () -> Unit,
+    onRepayClick: () -> Unit
 ) {
     val isLent = tx.direction == TransactionDirection.LENT
     val isConfirmed = tx.status == TransactionStatus.CONFIRMED
     val isOverdue = !isConfirmed && tx.dueDate != null && tx.dueDate < System.currentTimeMillis()
+    val effectivePaid = tx.effectivePaidAmount
+    val remaining = tx.effectiveRemainingAmount
+    val isPartiallyPaid = !isConfirmed && effectivePaid > 0.0
 
     Card(
         modifier = Modifier
@@ -612,6 +640,32 @@ private fun TimelineTransactionItem(
                                 }
                             }
                         }
+                        isPartiallyPaid -> {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Amber100,
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.HourglassTop,
+                                        contentDescription = null,
+                                        tint = Amber700,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = "Partially Paid",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Amber700
+                                    )
+                                }
+                            }
+                        }
                         isOverdue -> {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
@@ -685,7 +739,43 @@ private fun TimelineTransactionItem(
                 }
             }
 
-            // Due date & Individual Settle this button
+            // Partial payment details breakdown
+            if (isPartiallyPaid) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Slate100.copy(alpha = 0.7f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Original: ${Formatters.formatCurrency(tx.amount)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600
+                        )
+                        Text(
+                            text = if (isLent) "Repaid: ${Formatters.formatCurrency(effectivePaid)}" else "Paid: ${Formatters.formatCurrency(effectivePaid)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isLent) EmeraldGreenDark else CoralOrangeDark,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Remaining: ${Formatters.formatCurrency(remaining)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate900,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Due date & Actions: Record Repayment & Settle this
             if (!isConfirmed) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
@@ -708,16 +798,32 @@ private fun TimelineTransactionItem(
                         )
                     }
 
-                    Text(
-                        text = "Settle this",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = EmeraldGreenDark,
-                        modifier = Modifier
-                            .clickable(onClick = onSettleClick)
-                            .padding(4.dp)
-                            .testTag("button_settle_${tx.id}")
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = if (isLent) "Record repayment" else "Record payment",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isLent) EmeraldGreenDark else CoralOrangeDark,
+                            modifier = Modifier
+                                .clickable(onClick = onRepayClick)
+                                .padding(4.dp)
+                                .testTag("button_repay_${tx.id}")
+                        )
+
+                        Text(
+                            text = "Settle this",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Slate600,
+                            modifier = Modifier
+                                .clickable(onClick = onSettleClick)
+                                .padding(4.dp)
+                                .testTag("button_settle_${tx.id}")
+                        )
+                    }
                 }
             }
         }
@@ -734,7 +840,8 @@ internal fun IndividualSettlementDialog(
     val isLent = tx.direction == TransactionDirection.LENT
     val remaining = tx.effectiveRemainingAmount
     val originalAmount = tx.amount
-    val hasPartialPayment = tx.paidAmount != null && tx.paidAmount > 0
+    val alreadyPaid = tx.effectivePaidAmount
+    val hasPartialPayment = alreadyPaid > 0
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
@@ -764,7 +871,7 @@ internal fun IndividualSettlementDialog(
                 }
                 Text(
                     text = if (hasPartialPayment) {
-                        "$contextLine (${Formatters.formatCurrency(tx.paidAmount ?: 0.0)} already paid)"
+                        "$contextLine (${Formatters.formatCurrency(alreadyPaid)} already paid)"
                     } else {
                         contextLine
                     },
@@ -789,6 +896,184 @@ internal fun IndividualSettlementDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.testTag("button_cancel_settle_individual")
+            ) {
+                Text("Cancel", color = Slate700)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+@Composable
+internal fun RepaymentDialog(
+    friendName: String,
+    tx: TransactionEntity,
+    onConfirm: (Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val isLent = tx.direction == TransactionDirection.LENT
+    val remaining = tx.effectiveRemainingAmount
+    val originalAmount = tx.amount
+    val alreadyPaid = tx.effectivePaidAmount
+
+    var amountInput by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
+
+    val parsedAmount = amountInput.toDoubleOrNull()
+    val ctaText = when {
+        parsedAmount != null && parsedAmount > 0 -> "Record ${Formatters.formatCurrency(parsedAmount)}"
+        isLent -> "Record repayment"
+        else -> "Record payment"
+    }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (isLent) "Record Repayment" else "Record Payment",
+                fontWeight = FontWeight.Bold,
+                color = Slate900
+            )
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Direction context
+                Text(
+                    text = if (isLent) {
+                        "$friendName owes you ${Formatters.formatCurrency(originalAmount)}"
+                    } else {
+                        "You owe $friendName ${Formatters.formatCurrency(originalAmount)}"
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Slate900
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Breakdown of already repaid and remaining
+                if (alreadyPaid > 0) {
+                    Text(
+                        text = if (isLent) {
+                            "Already repaid: ${Formatters.formatCurrency(alreadyPaid)}"
+                        } else {
+                            "Already paid: ${Formatters.formatCurrency(alreadyPaid)}"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Slate600
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
+
+                Text(
+                    text = "Remaining: ${Formatters.formatCurrency(remaining)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isLent) EmeraldGreenDark else CoralOrangeDark
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Amount text field
+                OutlinedTextField(
+                    value = amountInput,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.matches(Regex("""^\d*\.?\d{0,2}$"""))) {
+                            amountInput = input
+                            errorMessage = null
+                        }
+                    },
+                    label = { Text(if (isLent) "Repayment amount" else "Payment amount") },
+                    placeholder = { Text("Enter amount") },
+                    prefix = { Text("₹ ", fontWeight = FontWeight.Bold) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    isError = errorMessage != null,
+                    supportingText = if (errorMessage != null) {
+                        {
+                            Text(
+                                text = errorMessage!!,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.testTag("text_repayment_error")
+                            )
+                        }
+                    } else null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("input_repayment_amount")
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Quick fill button for remaining balance
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = {
+                            val roundedRem = kotlin.math.round(remaining * 100.0) / 100.0
+                            amountInput = if (roundedRem % 1.0 == 0.0) {
+                                roundedRem.toLong().toString()
+                            } else {
+                                roundedRem.toString()
+                            }
+                            errorMessage = null
+                        },
+                        modifier = Modifier.testTag("button_fill_remaining")
+                    ) {
+                        Text(
+                            text = "Fill remaining (${Formatters.formatCurrency(remaining)})",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isLent) EmeraldGreenDark else CoralOrangeDark
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (isSubmitting) return@Button
+                    val trimmed = amountInput.trim()
+                    if (trimmed.isEmpty()) {
+                        errorMessage = "Please enter an amount"
+                        return@Button
+                    }
+                    val amount = trimmed.toDoubleOrNull()
+                    if (amount == null || amount.isNaN() || amount.isInfinite()) {
+                        errorMessage = "Please enter a valid numeric amount"
+                        return@Button
+                    }
+                    if (amount <= 0.0) {
+                        errorMessage = "Amount must be greater than ₹0"
+                        return@Button
+                    }
+                    if (amount > remaining + 0.0001) {
+                        errorMessage = "Amount cannot exceed remaining balance of ${Formatters.formatCurrency(remaining)}"
+                        return@Button
+                    }
+
+                    isSubmitting = true
+                    onConfirm(amount)
+                },
+                enabled = !isSubmitting,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isLent) EmeraldGreen else CoralOrange
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.testTag("button_confirm_record_repayment")
+            ) {
+                Text(ctaText, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.testTag("button_cancel_record_repayment")
             ) {
                 Text("Cancel", color = Slate700)
             }

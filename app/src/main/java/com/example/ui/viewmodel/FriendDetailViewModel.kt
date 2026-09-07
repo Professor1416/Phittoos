@@ -9,6 +9,8 @@ import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
 import com.example.data.model.effectiveRemainingAmount
 import com.example.data.repository.PhittoosRepository
+import com.example.data.repository.RepaymentResult
+import com.example.ui.util.Formatters
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -125,6 +127,38 @@ class FriendDetailViewModel(
                 if (tx != null && tx.status == TransactionStatus.OPEN) {
                     repository.markTransactionAsPaid(transactionId)
                     _toastMessage.value = "Transaction marked as settled"
+                }
+            } finally {
+                _settlingTransactionIds.update { it - transactionId }
+            }
+        }
+    }
+
+    fun recordRepayment(
+        transactionId: Long,
+        amount: Double,
+        onSuccess: (() -> Unit)? = null,
+        onError: ((String) -> Unit)? = null
+    ) {
+        if (_settlingTransactionIds.value.contains(transactionId)) return
+        _settlingTransactionIds.update { it + transactionId }
+        viewModelScope.launch {
+            try {
+                val result = repository.recordRepayment(transactionId, amount)
+                when (result) {
+                    is RepaymentResult.Success -> {
+                        val formatted = Formatters.formatCurrency(amount)
+                        if (result.isFullySettled) {
+                            _toastMessage.value = "Transaction fully settled! ($formatted)"
+                        } else {
+                            _toastMessage.value = "Recorded repayment of $formatted"
+                        }
+                        onSuccess?.invoke()
+                    }
+                    is RepaymentResult.Error -> {
+                        _toastMessage.value = result.message
+                        onError?.invoke(result.message)
+                    }
                 }
             } finally {
                 _settlingTransactionIds.update { it - transactionId }
