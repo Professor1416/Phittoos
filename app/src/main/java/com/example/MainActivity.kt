@@ -15,11 +15,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.ui.navigation.Screen
+import com.example.ui.screens.activity.ActivityScreen
 import com.example.ui.screens.addtransaction.AddTransactionScreen
 import com.example.ui.screens.frienddetail.FriendDetailScreen
 import com.example.ui.screens.home.HomeScreen
 import com.example.ui.screens.onboarding.OnboardingScreen
 import com.example.ui.theme.PhittoosTheme
+import com.example.ui.viewmodel.ActivityViewModel
+import com.example.ui.viewmodel.ActivityViewModelFactory
 import com.example.ui.viewmodel.AddTransactionViewModel
 import com.example.ui.viewmodel.AddTransactionViewModelFactory
 import com.example.ui.viewmodel.FriendDetailViewModel
@@ -82,6 +85,9 @@ fun PhittoosNavApp(app: PhittoosApplication) {
                 },
                 onNavigateToFriendDetail = { friendId ->
                     navController.navigate(Screen.FriendDetail.createRoute(friendId))
+                },
+                onNavigateToActivity = {
+                    navController.navigate(Screen.Activity.route)
                 }
             )
         }
@@ -128,6 +134,22 @@ fun PhittoosNavApp(app: PhittoosApplication) {
                 },
                 onNavigateToAddTransaction = { fId ->
                     navController.navigate(Screen.AddTransaction.createRoute(fId))
+                }
+            )
+        }
+
+        // 5. Activity Screen
+        composable(Screen.Activity.route) {
+            val activityViewModel: ActivityViewModel = viewModel(
+                factory = ActivityViewModelFactory(app.repository)
+            )
+            ActivityScreen(
+                viewModel = activityViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToFriendDetail = { friendId ->
+                    navController.navigate(Screen.FriendDetail.createRoute(friendId))
                 }
             )
         }

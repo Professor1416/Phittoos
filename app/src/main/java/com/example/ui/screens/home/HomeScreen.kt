@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
@@ -89,6 +90,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateToAddTransaction: (Long?) -> Unit,
     onNavigateToFriendDetail: (Long) -> Unit,
+    onNavigateToActivity: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -117,7 +119,10 @@ fun HomeScreen(
         ) {
             // App Header
             item {
-                HomeHeader(userName = uiState.userName)
+                HomeHeader(
+                    userName = uiState.userName,
+                    onActivityClick = onNavigateToActivity
+                )
             }
 
             // Top Summary Card (Side-by-side numbers + Net line)
@@ -209,7 +214,10 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader(userName: String) {
+private fun HomeHeader(
+    userName: String,
+    onActivityClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -233,29 +241,50 @@ private fun HomeHeader(userName: String) {
             )
         }
 
-        if (userName.isNotBlank()) {
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.padding(4.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            IconButton(
+                onClick = onActivityClick,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Slate100)
+                    .testTag("btn_activity")
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "Activity History",
+                    tint = Slate800,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            if (userName.isNotBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.padding(4.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(EmeraldGreen)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = userName,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Slate800
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(EmeraldGreen)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = userName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Slate800
+                        )
+                    }
                 }
             }
         }

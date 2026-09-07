@@ -1,9 +1,14 @@
 package com.example.data.repository
 
+import com.example.data.dao.ActivityDao
 import com.example.data.dao.FriendDao
 import com.example.data.dao.TransactionDao
+import com.example.data.model.ActivityEntity
+import com.example.data.model.ActivityType
+import com.example.data.model.ActivityWithFriend
 import com.example.data.model.Friend
 import com.example.data.model.FriendWithBalance
+import com.example.data.model.NeedsAttentionItem
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
@@ -13,6 +18,7 @@ import com.example.data.model.effectiveRemainingAmount
 import com.example.domain.ReliabilityEngine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 sealed class RepaymentResult {
@@ -28,11 +34,48 @@ sealed class RepaymentResult {
 
 class PhittoosRepository(
     private val friendDao: FriendDao,
-    private val transactionDao: TransactionDao
+    private val transactionDao: TransactionDao,
+    private val activityDao: ActivityDao? = null
 ) {
     val allFriends: Flow<List<Friend>> = friendDao.getAllFriends()
     val recentFriends: Flow<List<Friend>> = friendDao.getRecentFriendsWithTransactions(8)
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllTransactions()
+    val allActivities: Flow<List<ActivityEntity>> = activityDao?.getAllActivities() ?: flowOf(emptyList())
+
+    val activitiesWithFriend: Flow<List<ActivityWithFriend>> = combine(
+        allActivities,
+        friendDao.getAllFriends()
+    ) { activities, friends ->
+        val friendMap = friends.associateBy { it.id }
+        activities.map { act ->
+            ActivityWithFriend(
+                activity = act,
+                friendName = friendMap[act.friendId]?.name ?: "Friend"
+            )
+        }
+    }
+
+    val needsAttentionItems: Flow<List<NeedsAttentionItem>> = combine(
+        transactionDao.getAllTransactions(),
+        friendDao.getAllFriends()
+    ) { transactions, friends ->
+        val friendMap = friends.associateBy { it.id }
+        transactions
+            .filter { it.status == TransactionStatus.OPEN && it.dueInfo.isActivelyOverdue && it.effectiveRemainingAmount > 0.0 }
+            .sortedByDescending { it.dueInfo.overdueDays }
+            .map { tx ->
+                NeedsAttentionItem(
+                    transactionId = tx.id,
+                    friendId = tx.friendId,
+                    friendName = friendMap[tx.friendId]?.name ?: "Friend",
+                    direction = tx.direction,
+                    remainingAmount = tx.effectiveRemainingAmount,
+                    overdueDays = tx.dueInfo.overdueDays,
+                    dueDate = tx.dueDate ?: 0L,
+                    formattedStatus = tx.dueInfo.formattedStatus
+                )
+            }
+    }
 
     val friendsWithBalance: Flow<List<FriendWithBalance>> = combine(
         friendDao.getAllFriends(),
@@ -186,16 +229,29 @@ class PhittoosRepository(
         note: String? = null,
         dueDate: Long? = null
     ): Long {
-        return transactionDao.insertTransaction(
+        val trimmedNote = note?.trim()?.ifBlank { null }
+        val txId = transactionDao.insertTransaction(
             TransactionEntity(
                 friendId = friendId,
                 amount = amount,
                 direction = direction,
-                note = note?.trim()?.ifBlank { null },
+                note = trimmedNote,
                 dueDate = dueDate,
                 status = TransactionStatus.OPEN
             )
         )
+        activityDao?.insertActivity(
+            ActivityEntity(
+                type = ActivityType.TRANSACTION_CREATED,
+                friendId = friendId,
+                transactionId = txId,
+                amount = amount,
+                direction = direction,
+                note = trimmedNote,
+                createdAt = System.currentTimeMillis()
+            )
+        )
+        return txId
     }
 
     suspend fun getTransactionById(transactionId: Long): TransactionEntity? {
@@ -237,6 +293,33 @@ class PhittoosRepository(
             return RepaymentResult.Error("Transaction is no longer open")
         }
 
+        // Record activity event
+        if (isFullySettled) {
+            activityDao?.insertActivity(
+                ActivityEntity(
+                    type = ActivityType.SETTLED,
+                    friendId = tx.friendId,
+                    transactionId = tx.id,
+                    amount = repaymentAmount,
+                    direction = tx.direction,
+                    note = "final_repayment",
+                    createdAt = settledAt
+                )
+            )
+        } else {
+            activityDao?.insertActivity(
+                ActivityEntity(
+                    type = ActivityType.PARTIAL_REPAYMENT,
+                    friendId = tx.friendId,
+                    transactionId = tx.id,
+                    amount = repaymentAmount,
+                    direction = tx.direction,
+                    note = null,
+                    createdAt = settledAt
+                )
+            )
+        }
+
         val updatedTx = tx.copy(paidAmount = finalPaid, status = finalStatus, settledAt = settledTimestamp)
         return RepaymentResult.Success(updatedTx, isFullySettled)
     }
@@ -245,7 +328,22 @@ class PhittoosRepository(
         transactionId: Long,
         settledAt: Long = System.currentTimeMillis()
     ) {
+        val tx = transactionDao.getTransactionById(transactionId) ?: return
+        if (tx.status != TransactionStatus.OPEN) return // Idempotent check
+
+        val remaining = tx.effectiveRemainingAmount
         transactionDao.markAsConfirmed(transactionId, settledAt)
+        activityDao?.insertActivity(
+            ActivityEntity(
+                type = ActivityType.SETTLED,
+                friendId = tx.friendId,
+                transactionId = tx.id,
+                amount = remaining,
+                direction = tx.direction,
+                note = null,
+                createdAt = settledAt
+            )
+        )
     }
 
     suspend fun settleAllSameDirectionForFriend(
@@ -261,6 +359,20 @@ class PhittoosRepository(
             return false
         }
         transactionDao.markAllOpenForFriendAsConfirmed(friendId, settledAt)
+        for (tx in openTxs) {
+            val remaining = tx.effectiveRemainingAmount
+            activityDao?.insertActivity(
+                ActivityEntity(
+                    type = ActivityType.SETTLED,
+                    friendId = friendId,
+                    transactionId = tx.id,
+                    amount = remaining,
+                    direction = tx.direction,
+                    note = null,
+                    createdAt = settledAt
+                )
+            )
+        }
         return true
     }
 
