@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Card
@@ -459,7 +460,7 @@ private fun getActivityIconConfig(
             Triple(Icons.Default.WarningAmber, CoralOrangeDark, CoralOrangeSurface)
         }
         ActivityType.REMINDER_SENT -> {
-            Triple(Icons.Default.History, Slate700, Slate100)
+            Triple(Icons.Default.Notifications, CoralOrangeDark, CoralOrangeSurface)
         }
     }
 }

@@ -433,9 +433,9 @@ class ActivityReminderHistoryTest {
         sqliteDb.execSQL("INSERT INTO transactions (id, friend_id, amount, direction, note, created_date, due_date, status, paid_amount, settled_at) VALUES (1, 1, 750.0, 'LENT', 'LegacyTx', 1000, NULL, 'OPEN', 0.0, NULL)")
         sqliteDb.close()
 
-        // 2. Open with Room specifying MIGRATION_2_3
+        // 2. Open with Room specifying migrations through v4
         val upgradedDb = Room.databaseBuilder(context, AppDatabase::class.java, "test_migration_2_3.db")
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
             .allowMainThreadQueries()
             .build()
 

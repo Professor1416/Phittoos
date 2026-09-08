@@ -1,19 +1,28 @@
 package com.example
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.reminder.ReminderNotificationHelper
 import com.example.ui.navigation.Screen
 import com.example.ui.screens.activity.ActivityScreen
 import com.example.ui.screens.addtransaction.AddTransactionScreen
@@ -36,11 +45,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val app = application as PhittoosApplication
+        val friendIdFromNotification = intent?.getLongExtra(ReminderNotificationHelper.EXTRA_FRIEND_ID, -1L)?.takeIf { it > 0 }
 
         setContent {
             PhittoosTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    PhittoosNavApp(app)
+                    PhittoosNavApp(app, initialFriendId = friendIdFromNotification)
                 }
             }
         }
@@ -48,9 +58,34 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun PhittoosNavApp(app: PhittoosApplication) {
+fun PhittoosNavApp(app: PhittoosApplication, initialFriendId: Long? = null) {
     val navController = rememberNavController()
     val userPreferences = app.userPreferences
+    val context = LocalContext.current
+
+    // Request notification permission once on Android 13+ contextually
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val permissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission()
+        ) { /* no-op: app works regardless of grant/denial */ }
+
+        LaunchedEffect(Unit) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    LaunchedEffect(initialFriendId) {
+        if (initialFriendId != null && userPreferences.hasCompletedOnboarding) {
+            navController.navigate(Screen.FriendDetail.createRoute(initialFriendId))
+        }
+    }
+
     val startDestination = if (userPreferences.hasCompletedOnboarding) {
         Screen.Home.route
     } else {

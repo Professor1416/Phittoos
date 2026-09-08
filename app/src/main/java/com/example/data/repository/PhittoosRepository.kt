@@ -9,6 +9,7 @@ import com.example.data.model.ActivityWithFriend
 import com.example.data.model.Friend
 import com.example.data.model.FriendWithBalance
 import com.example.data.model.NeedsAttentionItem
+import com.example.data.model.ReminderStage
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
@@ -388,5 +389,39 @@ class PhittoosRepository(
         // Fallback to all friends
         val all = friendDao.getFriendByName("") // just a check, or query
         return emptyList()
+    }
+
+    suspend fun getFriendByIdOnce(friendId: Long): Friend? {
+        return friendDao.getFriendByIdOnce(friendId)
+    }
+
+    suspend fun getSentReminderStagesForTransaction(transactionId: Long): Set<ReminderStage> {
+        return activityDao?.getSentReminderStagesForTransaction(transactionId)?.toSet() ?: emptySet()
+    }
+
+    suspend fun recordReminderSent(
+        transactionId: Long,
+        friendId: Long,
+        stage: ReminderStage,
+        amount: Double,
+        direction: TransactionDirection = TransactionDirection.LENT,
+        timestamp: Long = System.currentTimeMillis()
+    ): Long? {
+        val alreadySent = activityDao?.getSentReminderStagesForTransaction(transactionId) ?: emptyList()
+        if (stage in alreadySent) {
+            return null // Idempotency guard: never record duplicate for the same stage
+        }
+        return activityDao?.insertActivity(
+            ActivityEntity(
+                type = ActivityType.REMINDER_SENT,
+                friendId = friendId,
+                transactionId = transactionId,
+                amount = amount,
+                direction = direction,
+                note = "${stage.daysOverdueThreshold}-day reminder sent",
+                reminderStage = stage,
+                createdAt = timestamp
+            )
+        )
     }
 }

@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.example.data.model.ActivityEntity
+import com.example.data.model.ReminderStage
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -32,6 +33,12 @@ interface ActivityDao {
 
     @Query("SELECT COUNT(*) FROM activity_records")
     suspend fun getActivityCount(): Int
+
+    @Query("SELECT reminder_stage FROM activity_records WHERE transaction_id = :transactionId AND type = 'REMINDER_SENT' AND reminder_stage IS NOT NULL")
+    suspend fun getSentReminderStagesForTransaction(transactionId: Long): List<ReminderStage>
+
+    @Query("SELECT * FROM activity_records WHERE transaction_id = :transactionId AND type = 'REMINDER_SENT'")
+    suspend fun getReminderActivitiesForTransaction(transactionId: Long): List<ActivityEntity>
 
     @Query("DELETE FROM activity_records")
     suspend fun deleteAllActivities()

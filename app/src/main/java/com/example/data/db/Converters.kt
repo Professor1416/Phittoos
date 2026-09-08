@@ -2,6 +2,7 @@ package com.example.data.db
 
 import androidx.room.TypeConverter
 import com.example.data.model.ActivityType
+import com.example.data.model.ReminderStage
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionStatus
 
@@ -52,6 +53,19 @@ class Converters {
             ActivityType.valueOf(value)
         } catch (e: Exception) {
             ActivityType.TRANSACTION_CREATED
+        }
+    }
+
+    @TypeConverter
+    fun fromReminderStage(value: ReminderStage?): String? = value?.name
+
+    @TypeConverter
+    fun toReminderStage(value: String?): ReminderStage? {
+        if (value == null) return null
+        return try {
+            ReminderStage.valueOf(value)
+        } catch (e: Exception) {
+            null
         }
     }
 }

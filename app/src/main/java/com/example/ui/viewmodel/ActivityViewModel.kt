@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.model.ActivityType
 import com.example.data.model.ActivityWithFriend
 import com.example.data.model.NeedsAttentionItem
+import com.example.data.model.ReminderStage
 import com.example.data.model.TransactionDirection
 import com.example.data.repository.PhittoosRepository
 import com.example.ui.util.Formatters
@@ -24,7 +25,8 @@ data class ActivityDisplayItem(
     val formattedTime: String,
     val note: String?,
     val direction: TransactionDirection?,
-    val timestamp: Long
+    val timestamp: Long,
+    val reminderStage: ReminderStage? = null
 )
 
 data class ActivityUiState(
@@ -97,7 +99,14 @@ class ActivityViewModel(
                     }
                 }
                 ActivityType.BECAME_OVERDUE -> "$amtStr became overdue"
-                ActivityType.REMINDER_SENT -> "Reminder sent"
+                ActivityType.REMINDER_SENT -> {
+                    when (act.reminderStage) {
+                        ReminderStage.DAY_7 -> "7-day reminder sent"
+                        ReminderStage.DAY_15 -> "15-day reminder sent"
+                        ReminderStage.DAY_30 -> "30-day reminder sent"
+                        null -> "Reminder sent"
+                    }
+                }
             }
 
             return ActivityDisplayItem(
@@ -110,7 +119,8 @@ class ActivityViewModel(
                 formattedTime = Formatters.formatTime(act.createdAt),
                 note = if (act.note != "final_repayment") act.note else null,
                 direction = act.direction,
-                timestamp = act.createdAt
+                timestamp = act.createdAt,
+                reminderStage = act.reminderStage
             )
         }
     }

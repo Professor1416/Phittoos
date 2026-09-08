@@ -32,6 +32,8 @@ data class ActivityEntity(
     val amount: Double? = null,
     val direction: TransactionDirection? = null,
     val note: String? = null,
+    @ColumnInfo(name = "reminder_stage")
+    val reminderStage: ReminderStage? = null,
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis()
 )
