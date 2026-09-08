@@ -151,6 +151,7 @@ class AddTransactionViewModel(
 
     fun saveTransaction(onSuccess: (toastMessage: String) -> Unit) {
         val currentForm = _form.value
+        if (currentForm.isSaving) return
         val friend = currentForm.selectedFriend
         if (friend == null) {
             _form.update { it.copy(errorMessage = "Please select or add a friend") }

@@ -64,28 +64,19 @@ class MainActivity : ComponentActivity() {
 fun PhittoosNavApp(app: PhittoosApplication, initialFriendId: Long? = null) {
     val navController = rememberNavController()
     val userPreferences = app.userPreferences
-    val context = LocalContext.current
-
-    // Request notification permission once on Android 13+ contextually
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        val permissionLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestPermission()
-        ) { /* no-op: app works regardless of grant/denial */ }
-
-        LaunchedEffect(Unit) {
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) {
-                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-    }
 
     LaunchedEffect(initialFriendId) {
-        if (initialFriendId != null && userPreferences.hasCompletedOnboarding) {
-            navController.navigate(Screen.FriendDetail.createRoute(initialFriendId))
+        if (initialFriendId != null && initialFriendId > 0 && userPreferences.hasCompletedOnboarding) {
+            val friend = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                app.repository.getFriendByIdOnce(initialFriendId)
+            }
+            if (friend != null) {
+                navController.navigate(Screen.FriendDetail.createRoute(initialFriendId))
+            } else {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(Screen.Home.route) { inclusive = true }
+                }
+            }
         }
     }
 

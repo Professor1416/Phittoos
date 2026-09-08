@@ -161,6 +161,48 @@ fun FriendDetailScreen(
             ) {
                 CircularProgressIndicator(color = EmeraldGreen)
             }
+        } else if (uiState.isFriendNotFound || uiState.friend == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = Slate400,
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Friend not found",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Slate900
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This friend may have been deleted or your local data was reset.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Slate500,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = onNavigateBack,
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Return to Home")
+                    }
+                }
+            }
         } else {
             val friend = uiState.friend ?: return@Scaffold
             val net = uiState.netBalance

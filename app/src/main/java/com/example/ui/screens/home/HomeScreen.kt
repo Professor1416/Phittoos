@@ -252,7 +252,7 @@ private fun HomeHeader(
             IconButton(
                 onClick = onActivityClick,
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(Slate100)
                     .testTag("btn_activity")
@@ -261,14 +261,14 @@ private fun HomeHeader(
                     imageVector = Icons.Default.History,
                     contentDescription = "Activity History",
                     tint = Slate800,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
             IconButton(
                 onClick = onSettingsClick,
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(48.dp)
                     .clip(CircleShape)
                     .background(Slate100)
                     .testTag("btn_settings")
@@ -277,7 +277,7 @@ private fun HomeHeader(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Settings",
                     tint = Slate800,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
 

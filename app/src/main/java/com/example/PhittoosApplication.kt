@@ -11,7 +11,12 @@ import com.example.reminder.SmartReminderScheduler
 class PhittoosApplication : Application(), Configuration.Provider {
     val database: AppDatabase by lazy { AppDatabase.getDatabase(this) }
     val repository: PhittoosRepository by lazy {
-        PhittoosRepository(database.friendDao(), database.transactionDao(), database.activityDao())
+        PhittoosRepository(
+            friendDao = database.friendDao(),
+            transactionDao = database.transactionDao(),
+            activityDao = database.activityDao(),
+            database = database
+        )
     }
     val userPreferences: UserPreferences by lazy { UserPreferences(this) }
 

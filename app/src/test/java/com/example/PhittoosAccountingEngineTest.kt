@@ -407,13 +407,12 @@ class PhittoosAccountingEngineTest {
     }
 
     /**
-     * Suspicious code audit verification:
-     * repository.getRecentFriends() returns emptyList() and is unused dead code,
-     * while repository.recentFriends is the real Flow-based implementation.
+     * Audit verification:
+     * repository.recentFriends is the real Flow-based implementation.
      */
     @Test
-    fun testSuspiciousCode_getRecentFriendsReturnsEmptyList() = runTest {
-        val result = repository.getRecentFriends(6)
-        assertTrue(result.isEmpty())
+    fun testRecentFriendsFlow() = runTest {
+        val friends = repository.recentFriends.first()
+        assertTrue(friends.isEmpty())
     }
 }

@@ -1,8 +1,5 @@
 package com.example.ui.screens.onboarding
 
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -93,13 +90,6 @@ fun OnboardingScreen(
         onCompleteOnboarding()
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { _ ->
-        // On granted or denied, complete onboarding and proceed to Home
-        completeAndGoHome()
-    }
-
     fun proceedFromStep2() {
         val trimmed = userNameInput.trim()
         val finalName = if (trimmed.isNotEmpty()) trimmed else "You"
@@ -188,7 +178,7 @@ fun OnboardingScreen(
                     3 -> {
                         Button(
                             onClick = {
-                                permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                                completeAndGoHome()
                             },
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),

@@ -17,6 +17,8 @@ import com.example.data.model.TransactionWithFriend
 import com.example.data.model.dueInfo
 import com.example.data.model.effectiveRemainingAmount
 import com.example.domain.ReliabilityEngine
+import androidx.room.withTransaction
+import com.example.data.db.AppDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
@@ -36,8 +38,17 @@ sealed class RepaymentResult {
 class PhittoosRepository(
     private val friendDao: FriendDao,
     private val transactionDao: TransactionDao,
-    private val activityDao: ActivityDao? = null
+    private val activityDao: ActivityDao? = null,
+    private val database: AppDatabase? = null
 ) {
+    private suspend fun <T> runInTransaction(block: suspend () -> T): T {
+        val db = database
+        return if (db != null) {
+            db.withTransaction { block() }
+        } else {
+            block()
+        }
+    }
     val allFriends: Flow<List<Friend>> = friendDao.getAllFriends()
     val recentFriends: Flow<List<Friend>> = friendDao.getRecentFriendsWithTransactions(8)
     val allTransactions: Flow<List<TransactionEntity>> = transactionDao.getAllTransactions()
@@ -230,29 +241,31 @@ class PhittoosRepository(
         note: String? = null,
         dueDate: Long? = null
     ): Long {
-        val trimmedNote = note?.trim()?.ifBlank { null }
-        val txId = transactionDao.insertTransaction(
-            TransactionEntity(
-                friendId = friendId,
-                amount = amount,
-                direction = direction,
-                note = trimmedNote,
-                dueDate = dueDate,
-                status = TransactionStatus.OPEN
+        return runInTransaction {
+            val trimmedNote = note?.trim()?.ifBlank { null }
+            val txId = transactionDao.insertTransaction(
+                TransactionEntity(
+                    friendId = friendId,
+                    amount = amount,
+                    direction = direction,
+                    note = trimmedNote,
+                    dueDate = dueDate,
+                    status = TransactionStatus.OPEN
+                )
             )
-        )
-        activityDao?.insertActivity(
-            ActivityEntity(
-                type = ActivityType.TRANSACTION_CREATED,
-                friendId = friendId,
-                transactionId = txId,
-                amount = amount,
-                direction = direction,
-                note = trimmedNote,
-                createdAt = System.currentTimeMillis()
+            activityDao?.insertActivity(
+                ActivityEntity(
+                    type = ActivityType.TRANSACTION_CREATED,
+                    friendId = friendId,
+                    transactionId = txId,
+                    amount = amount,
+                    direction = direction,
+                    note = trimmedNote,
+                    createdAt = System.currentTimeMillis()
+                )
             )
-        )
-        return txId
+            txId
+        }
     }
 
     suspend fun getTransactionById(transactionId: Long): TransactionEntity? {
@@ -268,104 +281,79 @@ class PhittoosRepository(
             return RepaymentResult.Error("Repayment amount must be greater than ₹0")
         }
 
-        val tx = transactionDao.getTransactionById(transactionId)
-            ?: return RepaymentResult.Error("Transaction not found")
+        return runInTransaction {
+            val tx = transactionDao.getTransactionById(transactionId)
+                ?: return@runInTransaction RepaymentResult.Error("Transaction not found")
 
-        if (tx.status != TransactionStatus.OPEN) {
-            return RepaymentResult.Error("Transaction is already settled")
-        }
+            if (tx.status != TransactionStatus.OPEN) {
+                return@runInTransaction RepaymentResult.Error("Transaction is already settled")
+            }
 
-        val remaining = tx.effectiveRemainingAmount
-        if (repaymentAmount > remaining + 0.0001) {
-            return RepaymentResult.Error("Amount exceeds remaining balance of $remaining")
-        }
+            val remaining = tx.effectiveRemainingAmount
+            if (repaymentAmount > remaining + 0.0001) {
+                return@runInTransaction RepaymentResult.Error("Amount exceeds remaining balance of $remaining")
+            }
 
-        val currentEffectivePaid = (tx.paidAmount ?: 0.0).coerceIn(0.0, tx.amount)
-        val unroundedPaid = currentEffectivePaid + repaymentAmount
-        val newPaid = kotlin.math.round(unroundedPaid * 100.0) / 100.0
-        val isFullySettled = newPaid >= tx.amount - 0.005
+            val currentEffectivePaid = (tx.paidAmount ?: 0.0).coerceIn(0.0, tx.amount)
+            val unroundedPaid = currentEffectivePaid + repaymentAmount
+            val newPaid = kotlin.math.round(unroundedPaid * 100.0) / 100.0
+            val isFullySettled = newPaid >= tx.amount - 0.005
 
-        val finalPaid = if (isFullySettled) tx.amount else newPaid.coerceAtMost(tx.amount)
-        val finalStatus = if (isFullySettled) TransactionStatus.CONFIRMED else TransactionStatus.OPEN
-        val settledTimestamp = if (isFullySettled) settledAt else null
+            val finalPaid = if (isFullySettled) tx.amount else newPaid.coerceAtMost(tx.amount)
+            val finalStatus = if (isFullySettled) TransactionStatus.CONFIRMED else TransactionStatus.OPEN
+            val settledTimestamp = if (isFullySettled) settledAt else null
 
-        val rowsUpdated = transactionDao.updateRepayment(transactionId, finalPaid, finalStatus, settledTimestamp)
-        if (rowsUpdated == 0) {
-            return RepaymentResult.Error("Transaction is no longer open")
-        }
+            val rowsUpdated = transactionDao.updateRepayment(transactionId, finalPaid, finalStatus, settledTimestamp)
+            if (rowsUpdated == 0) {
+                return@runInTransaction RepaymentResult.Error("Transaction is no longer open")
+            }
 
-        // Record activity event
-        if (isFullySettled) {
-            activityDao?.insertActivity(
-                ActivityEntity(
-                    type = ActivityType.SETTLED,
-                    friendId = tx.friendId,
-                    transactionId = tx.id,
-                    amount = repaymentAmount,
-                    direction = tx.direction,
-                    note = "final_repayment",
-                    createdAt = settledAt
+            // Record activity event
+            if (isFullySettled) {
+                activityDao?.insertActivity(
+                    ActivityEntity(
+                        type = ActivityType.SETTLED,
+                        friendId = tx.friendId,
+                        transactionId = tx.id,
+                        amount = repaymentAmount,
+                        direction = tx.direction,
+                        note = "final_repayment",
+                        createdAt = settledAt
+                    )
                 )
-            )
-        } else {
-            activityDao?.insertActivity(
-                ActivityEntity(
-                    type = ActivityType.PARTIAL_REPAYMENT,
-                    friendId = tx.friendId,
-                    transactionId = tx.id,
-                    amount = repaymentAmount,
-                    direction = tx.direction,
-                    note = null,
-                    createdAt = settledAt
+            } else {
+                activityDao?.insertActivity(
+                    ActivityEntity(
+                        type = ActivityType.PARTIAL_REPAYMENT,
+                        friendId = tx.friendId,
+                        transactionId = tx.id,
+                        amount = repaymentAmount,
+                        direction = tx.direction,
+                        note = null,
+                        createdAt = settledAt
+                    )
                 )
-            )
-        }
+            }
 
-        val updatedTx = tx.copy(paidAmount = finalPaid, status = finalStatus, settledAt = settledTimestamp)
-        return RepaymentResult.Success(updatedTx, isFullySettled)
+            val updatedTx = tx.copy(paidAmount = finalPaid, status = finalStatus, settledAt = settledTimestamp)
+            RepaymentResult.Success(updatedTx, isFullySettled)
+        }
     }
 
     suspend fun markTransactionAsPaid(
         transactionId: Long,
         settledAt: Long = System.currentTimeMillis()
     ) {
-        val tx = transactionDao.getTransactionById(transactionId) ?: return
-        if (tx.status != TransactionStatus.OPEN) return // Idempotent check
+        runInTransaction {
+            val tx = transactionDao.getTransactionById(transactionId) ?: return@runInTransaction
+            if (tx.status != TransactionStatus.OPEN) return@runInTransaction // Idempotent check
 
-        val remaining = tx.effectiveRemainingAmount
-        transactionDao.markAsConfirmed(transactionId, settledAt)
-        activityDao?.insertActivity(
-            ActivityEntity(
-                type = ActivityType.SETTLED,
-                friendId = tx.friendId,
-                transactionId = tx.id,
-                amount = remaining,
-                direction = tx.direction,
-                note = null,
-                createdAt = settledAt
-            )
-        )
-    }
-
-    suspend fun settleAllSameDirectionForFriend(
-        friendId: Long,
-        settledAt: Long = System.currentTimeMillis()
-    ): Boolean {
-        val openTxs = transactionDao.getOpenTransactionsForFriend(friendId)
-        if (openTxs.isEmpty()) return false
-        val hasLent = openTxs.any { it.direction == TransactionDirection.LENT }
-        val hasBorrowed = openTxs.any { it.direction == TransactionDirection.BORROWED }
-        if (hasLent && hasBorrowed) {
-            // Mixed direction safety guard: do NOT bulk-settle when transactions are in both directions
-            return false
-        }
-        transactionDao.markAllOpenForFriendAsConfirmed(friendId, settledAt)
-        for (tx in openTxs) {
             val remaining = tx.effectiveRemainingAmount
+            transactionDao.markAsConfirmed(transactionId, settledAt)
             activityDao?.insertActivity(
                 ActivityEntity(
                     type = ActivityType.SETTLED,
-                    friendId = friendId,
+                    friendId = tx.friendId,
                     transactionId = tx.id,
                     amount = remaining,
                     direction = tx.direction,
@@ -374,7 +362,38 @@ class PhittoosRepository(
                 )
             )
         }
-        return true
+    }
+
+    suspend fun settleAllSameDirectionForFriend(
+        friendId: Long,
+        settledAt: Long = System.currentTimeMillis()
+    ): Boolean {
+        return runInTransaction {
+            val openTxs = transactionDao.getOpenTransactionsForFriend(friendId)
+            if (openTxs.isEmpty()) return@runInTransaction false
+            val hasLent = openTxs.any { it.direction == TransactionDirection.LENT }
+            val hasBorrowed = openTxs.any { it.direction == TransactionDirection.BORROWED }
+            if (hasLent && hasBorrowed) {
+                // Mixed direction safety guard: do NOT bulk-settle when transactions are in both directions
+                return@runInTransaction false
+            }
+            transactionDao.markAllOpenForFriendAsConfirmed(friendId, settledAt)
+            for (tx in openTxs) {
+                val remaining = tx.effectiveRemainingAmount
+                activityDao?.insertActivity(
+                    ActivityEntity(
+                        type = ActivityType.SETTLED,
+                        friendId = friendId,
+                        transactionId = tx.id,
+                        amount = remaining,
+                        direction = tx.direction,
+                        note = null,
+                        createdAt = settledAt
+                    )
+                )
+            }
+            true
+        }
     }
 
     suspend fun markAllForFriendAsPaid(
@@ -382,13 +401,6 @@ class PhittoosRepository(
         settledAt: Long = System.currentTimeMillis()
     ): Boolean {
         return settleAllSameDirectionForFriend(friendId, settledAt)
-    }
-
-    suspend fun getRecentFriends(limit: Int = 6): List<Friend> {
-        // Find distinct friend IDs from recent transactions
-        // Fallback to all friends
-        val all = friendDao.getFriendByName("") // just a check, or query
-        return emptyList()
     }
 
     suspend fun getFriendByIdOnce(friendId: Long): Friend? {
@@ -426,9 +438,11 @@ class PhittoosRepository(
     }
 
     suspend fun clearAllData() {
-        activityDao?.deleteAllActivities()
-        transactionDao.deleteAllTransactions()
-        friendDao.deleteAllFriends()
+        runInTransaction {
+            activityDao?.deleteAllActivities()
+            transactionDao.deleteAllTransactions()
+            friendDao.deleteAllFriends()
+        }
     }
 
     suspend fun getAllTransactionsForExport(): List<TransactionEntity> {

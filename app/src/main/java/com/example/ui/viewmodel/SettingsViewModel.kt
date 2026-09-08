@@ -143,9 +143,9 @@ class SettingsViewModel(
                     @Suppress("DEPRECATION")
                     context.packageManager.getPackageInfo(context.packageName, 0)
                 }
-                packageInfo.versionName ?: "1.0"
+                packageInfo.versionName ?: "1.0.0"
             } catch (e: Exception) {
-                "1.0"
+                "1.0.0"
             }
         }
     }
