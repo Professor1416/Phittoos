@@ -14,6 +14,9 @@ interface FriendDao {
     @Query("SELECT * FROM friends ORDER BY name ASC")
     fun getAllFriends(): Flow<List<Friend>>
 
+    @Query("SELECT * FROM friends ORDER BY name ASC")
+    suspend fun getAllFriendsList(): List<Friend>
+
     @Query("SELECT * FROM friends WHERE id = :id LIMIT 1")
     fun getFriendById(id: Long): Flow<Friend?>
 
@@ -37,4 +40,7 @@ interface FriendDao {
 
     @Query("SELECT f.* FROM friends f INNER JOIN transactions t ON f.id = t.friend_id GROUP BY f.id ORDER BY MAX(t.created_date) DESC LIMIT :limit")
     fun getRecentFriendsWithTransactions(limit: Int = 8): Flow<List<Friend>>
+
+    @Query("DELETE FROM friends")
+    suspend fun deleteAllFriends()
 }

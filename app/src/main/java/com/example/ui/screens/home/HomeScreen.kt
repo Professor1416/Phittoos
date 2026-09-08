@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -91,6 +92,7 @@ fun HomeScreen(
     onNavigateToAddTransaction: (Long?) -> Unit,
     onNavigateToFriendDetail: (Long) -> Unit,
     onNavigateToActivity: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -121,7 +123,8 @@ fun HomeScreen(
             item {
                 HomeHeader(
                     userName = uiState.userName,
-                    onActivityClick = onNavigateToActivity
+                    onActivityClick = onNavigateToActivity,
+                    onSettingsClick = onNavigateToSettings
                 )
             }
 
@@ -216,7 +219,8 @@ fun HomeScreen(
 @Composable
 private fun HomeHeader(
     userName: String,
-    onActivityClick: () -> Unit = {}
+    onActivityClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -256,6 +260,22 @@ private fun HomeHeader(
                 Icon(
                     imageVector = Icons.Default.History,
                     contentDescription = "Activity History",
+                    tint = Slate800,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            IconButton(
+                onClick = onSettingsClick,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Slate100)
+                    .testTag("btn_settings")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
                     tint = Slate800,
                     modifier = Modifier.size(22.dp)
                 )

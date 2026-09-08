@@ -15,6 +15,9 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY created_date DESC")
     fun getAllTransactions(): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions ORDER BY created_date ASC, id ASC")
+    suspend fun getAllTransactionsOrdered(): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE friend_id = :friendId ORDER BY created_date DESC")
     fun getTransactionsForFriend(friendId: Long): Flow<List<TransactionEntity>>
 
@@ -50,4 +53,7 @@ interface TransactionDao {
 
     @Query("UPDATE transactions SET status = 'CONFIRMED', paid_amount = amount, settled_at = :settledAt WHERE friend_id = :friendId AND status = 'OPEN'")
     suspend fun markAllOpenForFriendAsConfirmed(friendId: Long, settledAt: Long)
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAllTransactions()
 }

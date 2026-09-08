@@ -29,6 +29,7 @@ import com.example.ui.screens.addtransaction.AddTransactionScreen
 import com.example.ui.screens.frienddetail.FriendDetailScreen
 import com.example.ui.screens.home.HomeScreen
 import com.example.ui.screens.onboarding.OnboardingScreen
+import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.theme.PhittoosTheme
 import com.example.ui.viewmodel.ActivityViewModel
 import com.example.ui.viewmodel.ActivityViewModelFactory
@@ -38,6 +39,8 @@ import com.example.ui.viewmodel.FriendDetailViewModel
 import com.example.ui.viewmodel.FriendDetailViewModelFactory
 import com.example.ui.viewmodel.HomeViewModel
 import com.example.ui.viewmodel.HomeViewModelFactory
+import com.example.ui.viewmodel.SettingsViewModel
+import com.example.ui.viewmodel.SettingsViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -123,6 +126,9 @@ fun PhittoosNavApp(app: PhittoosApplication, initialFriendId: Long? = null) {
                 },
                 onNavigateToActivity = {
                     navController.navigate(Screen.Activity.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }
@@ -185,6 +191,24 @@ fun PhittoosNavApp(app: PhittoosApplication, initialFriendId: Long? = null) {
                 },
                 onNavigateToFriendDetail = { friendId ->
                     navController.navigate(Screen.FriendDetail.createRoute(friendId))
+                }
+            )
+        }
+
+        // 6. Settings Screen
+        composable(Screen.Settings.route) {
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = SettingsViewModelFactory(app.repository, app.userPreferences)
+            )
+            SettingsScreen(
+                viewModel = settingsViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onDataCleared = {
+                    navController.navigate(Screen.Onboarding.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }

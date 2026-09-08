@@ -47,8 +47,17 @@ object SmartReminderEngine {
                 transactionId = transactionId,
                 friendId = friendId
             )
-        }
+        },
+        remindersEnabled: Boolean = true
     ): ReminderExecutionSummary {
+        if (!remindersEnabled) {
+            return ReminderExecutionSummary(
+                checkedTransactionsCount = 0,
+                remindersSentCount = 0,
+                details = emptyList()
+            )
+        }
+
         // 1. Fetch open transactions with due dates
         val openTxs = repository.getOpenTransactionsWithDueDate()
 

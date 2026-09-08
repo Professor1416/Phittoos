@@ -424,4 +424,18 @@ class PhittoosRepository(
             )
         )
     }
+
+    suspend fun clearAllData() {
+        activityDao?.deleteAllActivities()
+        transactionDao.deleteAllTransactions()
+        friendDao.deleteAllFriends()
+    }
+
+    suspend fun getAllTransactionsForExport(): List<TransactionEntity> {
+        return transactionDao.getAllTransactionsOrdered()
+    }
+
+    suspend fun getAllFriendsForExport(): List<Friend> {
+        return friendDao.getAllFriendsList()
+    }
 }

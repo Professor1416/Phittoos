@@ -16,4 +16,5 @@ sealed class Screen(val route: String) {
         fun createRoute(friendId: Long): String = "friend_detail/$friendId"
     }
     object Activity : Screen("activity")
+    object Settings : Screen("settings")
 }

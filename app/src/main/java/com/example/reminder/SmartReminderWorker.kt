@@ -15,9 +15,14 @@ class SmartReminderWorker(
             val app = applicationContext as? PhittoosApplication
                 ?: return Result.failure()
 
+            if (!app.userPreferences.remindersEnabled) {
+                return Result.success() // Safe no-op when repayment reminders are toggled off by user
+            }
+
             SmartReminderEngine.checkAndSendReminders(
                 repository = app.repository,
-                context = applicationContext
+                context = applicationContext,
+                remindersEnabled = true
             )
 
             Result.success()

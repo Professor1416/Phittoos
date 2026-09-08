@@ -116,6 +116,14 @@ object ReminderNotificationHelper {
         return (hash and 0x7FFFFFFF).coerceAtLeast(1)
     }
 
+    fun cancelAllNotifications(context: Context) {
+        try {
+            NotificationManagerCompat.from(context).cancelAll()
+        } catch (e: Exception) {
+            // Ignore failure on cancel
+        }
+    }
+
     private fun generateRequestCode(transactionId: Long, stage: ReminderStage): Int {
         val hash = (transactionId * 37 + stage.ordinal + 1000).toInt()
         return (hash and 0x7FFFFFFF).coerceAtLeast(1)
