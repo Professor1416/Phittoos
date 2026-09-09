@@ -22,9 +22,12 @@ import com.example.data.repository.PhittoosRepository
 import com.example.ui.util.Formatters
 import com.example.ui.viewmodel.ActivityViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -51,6 +54,7 @@ class ActivityReminderHistoryTest {
     private lateinit var transactionDao: TransactionDao
     private lateinit var activityDao: ActivityDao
     private lateinit var repository: PhittoosRepository
+    private var currentViewModel: ActivityViewModel? = null
     private val testDispatcher: TestDispatcher = StandardTestDispatcher()
 
     @Before
@@ -68,6 +72,8 @@ class ActivityReminderHistoryTest {
 
     @After
     fun tearDown() {
+        currentViewModel?.onScreenPaused()
+        currentViewModel = null
         db.close()
         Dispatchers.resetMain()
     }
@@ -718,7 +724,37 @@ class ActivityReminderHistoryTest {
         )
         assertEquals("Dinner split", itemUserNote.note)
 
-        // final_repayment marker suppressed
+        // Genuine TRANSACTION_CREATED note ending in "reminder sent" remains visible
+        val itemNoteEndingReminderSent = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.TRANSACTION_CREATED,
+                    friendId = 1L,
+                    amount = 450.0,
+                    direction = TransactionDirection.LENT,
+                    note = "First reminder sent"
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals("First reminder sent", itemNoteEndingReminderSent.note)
+
+        // Genuine TRANSACTION_CREATED note equal to "final_repayment" remains visible
+        val itemCreatedWithFinalRepaymentNote = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.TRANSACTION_CREATED,
+                    friendId = 1L,
+                    amount = 200.0,
+                    direction = TransactionDirection.LENT,
+                    note = "final_repayment"
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals("final_repayment", itemCreatedWithFinalRepaymentNote.note)
+
+        // Internal final_repayment marker on SETTLED event is suppressed
         val itemFinalRepayment = ActivityViewModel.mapToDisplayItem(
             ActivityWithFriend(
                 activity = ActivityEntity(
@@ -733,7 +769,22 @@ class ActivityReminderHistoryTest {
         )
         assertNull(itemFinalRepayment.note)
 
-        // System reminder note suppressed
+        // User note on SETTLED event is preserved
+        val itemSettledUserNote = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.SETTLED,
+                    friendId = 1L,
+                    amount = 200.0,
+                    direction = TransactionDirection.LENT,
+                    note = "Settled via cash"
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals("Settled via cash", itemSettledUserNote.note)
+
+        // System reminder note on REMINDER_SENT event is suppressed
         val itemReminderNote = ActivityViewModel.mapToDisplayItem(
             ActivityWithFriend(
                 activity = ActivityEntity(
@@ -790,5 +841,184 @@ class ActivityReminderHistoryTest {
         // Verify stored entity timestamp is unchanged
         val storedActivities = activityDao.getAllActivities().first()
         assertEquals(eventTime, storedActivities[0].createdAt)
+    }
+
+    /**
+     * TEST U: Keeping Activity resumed across midnight automatically changes Today to Yesterday
+     * without a database emission or manually calling refreshDateGrouping in the test.
+     */
+    @Test
+    fun testU_keepingActivityResumedAcrossMidnightAutomaticallyUpdatesHeaders() = runTest(testDispatcher) {
+        val friendId = friendDao.insertFriend(Friend(name = "Amit"))
+
+        val tz = TimeZone.getTimeZone("UTC")
+        val cal = Calendar.getInstance(tz).apply {
+            set(2026, Calendar.SEPTEMBER, 9, 23, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        var simulatedTime = cal.timeInMillis
+        val eventTime = simulatedTime
+
+        activityDao.insertActivity(
+            ActivityEntity(
+                type = ActivityType.TRANSACTION_CREATED,
+                friendId = friendId,
+                amount = 1000.0,
+                direction = TransactionDirection.LENT,
+                createdAt = eventTime
+            )
+        )
+
+        val vm = ActivityViewModel(
+            repository = repository,
+            clock = { simulatedTime },
+            timeZoneProvider = { tz }
+        )
+
+        try {
+            // Keep uiState continuously subscribed so WhileSubscribed stays active
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                vm.uiState.collect()
+            }
+
+            val stateDay1 = vm.uiState.first { !it.isLoading && it.groupedActivities.isNotEmpty() }
+            assertEquals("Today", stateDay1.groupedActivities.keys.first())
+
+            // Screen is resumed
+            vm.onScreenResumed()
+            assertTrue(vm.isMidnightRefreshRunning)
+
+            // Advance simulated time past midnight (1 hour + 5 seconds) to Day 2 00:00:05 UTC
+            val elapsedToMidnight = (60 * 60 * 1000L) + 5000L
+            simulatedTime += elapsedToMidnight
+
+            // Advance coroutine scheduler by the elapsed delay WITHOUT calling refreshDateGrouping or emitting to DB
+            testDispatcher.scheduler.advanceTimeBy(elapsedToMidnight)
+
+            // Date grouping automatically updated to "Yesterday"
+            val stateDay2 = vm.uiState.first { !it.isLoading && it.groupedActivities.containsKey("Yesterday") }
+            assertEquals("Yesterday", stateDay2.groupedActivities.keys.first())
+
+            // Stored database timestamp remains unchanged
+            val storedActivities = activityDao.getAllActivities().first()
+            assertEquals(eventTime, storedActivities[0].createdAt)
+        } finally {
+            vm.onScreenPaused()
+        }
+    }
+
+    /**
+     * TEST V: Inactive screens do not keep a refresh loop running; resume refreshes correctly.
+     */
+    @Test
+    fun testV_inactiveScreensStopRefreshLoopAndResumeRefreshesCorrectly() = runTest(testDispatcher) {
+        val friendId = friendDao.insertFriend(Friend(name = "Amit"))
+
+        val tz = TimeZone.getTimeZone("UTC")
+        val cal = Calendar.getInstance(tz).apply {
+            set(2026, Calendar.SEPTEMBER, 9, 23, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        var simulatedTime = cal.timeInMillis
+        val eventTime = simulatedTime
+
+        activityDao.insertActivity(
+            ActivityEntity(
+                type = ActivityType.TRANSACTION_CREATED,
+                friendId = friendId,
+                amount = 1000.0,
+                direction = TransactionDirection.LENT,
+                createdAt = eventTime
+            )
+        )
+
+        val vm = ActivityViewModel(
+            repository = repository,
+            clock = { simulatedTime },
+            timeZoneProvider = { tz }
+        )
+
+        try {
+            // Keep uiState continuously subscribed
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                vm.uiState.collect()
+            }
+
+            val stateDay1 = vm.uiState.first { !it.isLoading && it.groupedActivities.isNotEmpty() }
+            assertEquals("Today", stateDay1.groupedActivities.keys.first())
+
+            // Screen is active
+            vm.onScreenResumed()
+            assertTrue(vm.isMidnightRefreshRunning)
+
+            // Screen becomes inactive
+            vm.onScreenPaused()
+            assertFalse(vm.isMidnightRefreshRunning)
+
+            // Advance time past midnight while inactive
+            val elapsedToMidnight = (60 * 60 * 1000L) + 5000L
+            simulatedTime += elapsedToMidnight
+            testDispatcher.scheduler.advanceTimeBy(elapsedToMidnight)
+
+            // Loop is not running while inactive
+            assertFalse(vm.isMidnightRefreshRunning)
+
+            // When screen is resumed again
+            vm.onScreenResumed()
+
+            // Refresh loop resumed, and headers updated immediately on resume
+            assertTrue(vm.isMidnightRefreshRunning)
+            val stateResumed = vm.uiState.first { !it.isLoading && it.groupedActivities.containsKey("Yesterday") }
+            assertEquals("Yesterday", stateResumed.groupedActivities.keys.first())
+
+            // Timestamp remains unchanged
+            val stored = activityDao.getAllActivities().first()
+            assertEquals(eventTime, stored[0].createdAt)
+        } finally {
+            vm.onScreenPaused()
+        }
+    }
+
+    /**
+     * TEST W: calculateNextMidnightMillis accurately calculates next local midnight across DST transitions
+     */
+    @Test
+    fun testW_calculateNextMidnightMillisHandlesDSTAndMidnightBoundaries() {
+        val tzNY = TimeZone.getTimeZone("America/New_York")
+
+        // 1. Standard day: 2026-09-09 14:30:00 -> 2026-09-10 00:00:00
+        val calStd = Calendar.getInstance(tzNY).apply {
+            set(2026, Calendar.SEPTEMBER, 9, 14, 30, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val nextMidnightStd = ActivityViewModel.calculateNextMidnightMillis(calStd.timeInMillis, tzNY)
+        val calExpectedStd = Calendar.getInstance(tzNY).apply {
+            set(2026, Calendar.SEPTEMBER, 10, 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(calExpectedStd.timeInMillis, nextMidnightStd)
+
+        // 2. DST Fall Back transition: 2026-11-01 (25-hour day)
+        // 2026-11-01 00:30:00 EDT -> 2026-11-02 00:00:00 EST
+        // Because of the 2:00 AM fall-back, this spans 24.5 hours (88,200,000 ms), not 23.5 hours
+        val calFallBack = Calendar.getInstance(tzNY).apply {
+            set(2026, Calendar.NOVEMBER, 1, 0, 30, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val nextMidnightFallBack = ActivityViewModel.calculateNextMidnightMillis(calFallBack.timeInMillis, tzNY)
+        val calExpectedFallBack = Calendar.getInstance(tzNY).apply {
+            set(2026, Calendar.NOVEMBER, 2, 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        assertEquals(calExpectedFallBack.timeInMillis, nextMidnightFallBack)
+        assertEquals(24 * 3600 * 1000L + 1800 * 1000L, nextMidnightFallBack - calFallBack.timeInMillis)
+
+        // 3. Exactly at midnight boundary: 2026-09-09 00:00:00 -> 2026-09-10 00:00:00
+        val calExactMidnight = Calendar.getInstance(tzNY).apply {
+            set(2026, Calendar.SEPTEMBER, 9, 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val nextMidnightFromMidnight = ActivityViewModel.calculateNextMidnightMillis(calExactMidnight.timeInMillis, tzNY)
+        assertEquals(calExpectedStd.timeInMillis, nextMidnightFromMidnight)
     }
 }

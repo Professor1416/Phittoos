@@ -1,5 +1,7 @@
 package com.example.ui.viewmodel
 
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -12,11 +14,17 @@ import com.example.data.model.TransactionDirection
 import com.example.data.repository.PhittoosRepository
 import com.example.ui.util.Formatters
 import com.example.ui.util.UiMessage
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.TimeZone
 
 data class ActivityDisplayItem(
     val id: Long,
@@ -43,13 +51,51 @@ data class ActivityUiState(
 }
 
 class ActivityViewModel(
-    private val repository: PhittoosRepository
-) : ViewModel() {
+    private val repository: PhittoosRepository,
+    private val clock: () -> Long = { System.currentTimeMillis() },
+    private val timeZoneProvider: () -> TimeZone = { TimeZone.getDefault() }
+) : ViewModel(), DefaultLifecycleObserver {
 
-    private val refreshTrigger = MutableStateFlow(System.currentTimeMillis())
+    private val refreshTrigger = MutableStateFlow(clock())
+    private var midnightJob: Job? = null
 
-    fun refreshDateGrouping(nowMillis: Long = System.currentTimeMillis()) {
+    val isMidnightRefreshRunning: Boolean
+        get() = midnightJob?.isActive == true
+
+    fun refreshDateGrouping(nowMillis: Long = clock()) {
         refreshTrigger.value = nowMillis
+    }
+
+    fun onScreenResumed() {
+        midnightJob?.cancel()
+        refreshDateGrouping(clock())
+        midnightJob = viewModelScope.launch {
+            while (isActive) {
+                val currentNow = clock()
+                val nextMidnight = calculateNextMidnightMillis(currentNow, timeZoneProvider())
+                val delayMillis = (nextMidnight - currentNow).coerceAtLeast(1L)
+                delay(delayMillis)
+                refreshDateGrouping(clock())
+            }
+        }
+    }
+
+    fun onScreenPaused() {
+        midnightJob?.cancel()
+        midnightJob = null
+    }
+
+    override fun onResume(owner: LifecycleOwner) {
+        onScreenResumed()
+    }
+
+    override fun onPause(owner: LifecycleOwner) {
+        onScreenPaused()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        onScreenPaused()
     }
 
     val uiState: StateFlow<ActivityUiState> = combine(
@@ -78,6 +124,27 @@ class ActivityViewModel(
     )
 
     companion object {
+        fun calculateNextMidnightMillis(
+            nowMillis: Long,
+            timeZone: TimeZone = TimeZone.getDefault()
+        ): Long {
+            val calendar = Calendar.getInstance(timeZone).apply {
+                timeInMillis = nowMillis
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                add(Calendar.DAY_OF_YEAR, 1)
+            }
+            val next = calendar.timeInMillis
+            return if (next <= nowMillis) {
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+                calendar.timeInMillis
+            } else {
+                next
+            }
+        }
+
         fun mapToDisplayItem(item: ActivityWithFriend): ActivityDisplayItem {
             val act = item.activity
             val amtStr = act.amount?.let { Formatters.formatCurrency(it) } ?: ""
@@ -119,10 +186,8 @@ class ActivityViewModel(
                 }
             }
 
-            val isSystemGeneratedNote = act.note == "final_repayment" ||
-                act.type == ActivityType.REMINDER_SENT ||
-                act.reminderStage != null ||
-                act.note?.endsWith("reminder sent", ignoreCase = true) == true
+            val isSystemGeneratedNote = act.type == ActivityType.REMINDER_SENT ||
+                (act.type == ActivityType.SETTLED && act.note == "final_repayment")
 
             return ActivityDisplayItem(
                 id = act.id,
