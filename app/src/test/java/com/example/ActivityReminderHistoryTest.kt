@@ -5,13 +5,16 @@ import androidx.room.Room
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
+import com.example.R
 import com.example.data.dao.ActivityDao
 import com.example.data.dao.FriendDao
 import com.example.data.dao.TransactionDao
 import com.example.data.db.AppDatabase
 import com.example.data.model.ActivityEntity
 import com.example.data.model.ActivityType
+import com.example.data.model.ActivityWithFriend
 import com.example.data.model.Friend
+import com.example.data.model.ReminderStage
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
@@ -510,5 +513,282 @@ class ActivityReminderHistoryTest {
         assertEquals(10000L, limited[0].createdAt)
         assertEquals(9000L, limited[1].createdAt)
         assertEquals(8000L, limited[2].createdAt)
+    }
+
+    /**
+     * TEST R: mapToDisplayItem returns correct UiMessage and plain-language copy for all event types
+     */
+    @Test
+    fun testR_activityDisplayItemEventDescriptionsMatchPlainLanguageContract() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        // 1. LENT created -> "You gave ₹500"
+        val itemLentCreated = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.TRANSACTION_CREATED,
+                    friendId = 1L,
+                    amount = 500.0,
+                    direction = TransactionDirection.LENT
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_event_lent_created, itemLentCreated.eventDescription.resId)
+        assertEquals("You gave ₹500", itemLentCreated.eventDescription.asString(context))
+
+        // 2. BORROWED created -> "You took ₹300"
+        val itemBorrowedCreated = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.TRANSACTION_CREATED,
+                    friendId = 1L,
+                    amount = 300.0,
+                    direction = TransactionDirection.BORROWED
+                ),
+                friendName = "Rahul"
+            )
+        )
+        assertEquals(R.string.activity_event_borrowed_created, itemBorrowedCreated.eventDescription.resId)
+        assertEquals("You took ₹300", itemBorrowedCreated.eventDescription.asString(context))
+
+        // 3. LENT partial repayment -> "You received ₹200 back"
+        val itemLentPartial = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.PARTIAL_REPAYMENT,
+                    friendId = 1L,
+                    amount = 200.0,
+                    direction = TransactionDirection.LENT
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_event_lent_partial, itemLentPartial.eventDescription.resId)
+        assertEquals("You received ₹200 back", itemLentPartial.eventDescription.asString(context))
+
+        // 4. BORROWED partial repayment -> "You paid back ₹150"
+        val itemBorrowedPartial = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.PARTIAL_REPAYMENT,
+                    friendId = 1L,
+                    amount = 150.0,
+                    direction = TransactionDirection.BORROWED
+                ),
+                friendName = "Rahul"
+            )
+        )
+        assertEquals(R.string.activity_event_borrowed_partial, itemBorrowedPartial.eventDescription.resId)
+        assertEquals("You paid back ₹150", itemBorrowedPartial.eventDescription.asString(context))
+
+        // 5. LENT final repayment -> "You received the final ₹100 back"
+        val itemLentFinal = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.SETTLED,
+                    friendId = 1L,
+                    amount = 100.0,
+                    direction = TransactionDirection.LENT,
+                    note = "final_repayment"
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_event_lent_final, itemLentFinal.eventDescription.resId)
+        assertEquals("You received the final ₹100 back", itemLentFinal.eventDescription.asString(context))
+
+        // 6. BORROWED final repayment -> "You paid back the final ₹250"
+        val itemBorrowedFinal = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.SETTLED,
+                    friendId = 1L,
+                    amount = 250.0,
+                    direction = TransactionDirection.BORROWED,
+                    note = "final_repayment"
+                ),
+                friendName = "Rahul"
+            )
+        )
+        assertEquals(R.string.activity_event_borrowed_final, itemBorrowedFinal.eventDescription.resId)
+        assertEquals("You paid back the final ₹250", itemBorrowedFinal.eventDescription.asString(context))
+
+        // 7. Manual settlement -> "Marked ₹400 as paid"
+        val itemManualSettled = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.SETTLED,
+                    friendId = 1L,
+                    amount = 400.0,
+                    direction = TransactionDirection.LENT,
+                    note = null
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_event_manual_settled, itemManualSettled.eventDescription.resId)
+        assertEquals("Marked ₹400 as paid", itemManualSettled.eventDescription.asString(context))
+
+        // 8. Overdue -> "₹600 is overdue"
+        val itemOverdue = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.BECAME_OVERDUE,
+                    friendId = 1L,
+                    amount = 600.0
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_event_overdue, itemOverdue.eventDescription.resId)
+        assertEquals("₹600 is overdue", itemOverdue.eventDescription.asString(context))
+
+        // 9. Owner-only reminders (DAY_7, DAY_15, DAY_30, null fallback)
+        val itemDay7 = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.REMINDER_SENT,
+                    friendId = 1L,
+                    reminderStage = ReminderStage.DAY_7
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_reminder_day_7, itemDay7.eventDescription.resId)
+        assertEquals("Reminder for you · 7 days overdue", itemDay7.eventDescription.asString(context))
+
+        val itemDay15 = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.REMINDER_SENT,
+                    friendId = 1L,
+                    reminderStage = ReminderStage.DAY_15
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_reminder_day_15, itemDay15.eventDescription.resId)
+        assertEquals("Reminder for you · 15 days overdue", itemDay15.eventDescription.asString(context))
+
+        val itemDay30 = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.REMINDER_SENT,
+                    friendId = 1L,
+                    reminderStage = ReminderStage.DAY_30
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_reminder_day_30, itemDay30.eventDescription.resId)
+        assertEquals("Reminder for you · 30 days overdue", itemDay30.eventDescription.asString(context))
+
+        val itemFallback = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.REMINDER_SENT,
+                    friendId = 1L,
+                    reminderStage = null
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals(R.string.activity_reminder_fallback, itemFallback.eventDescription.resId)
+        assertEquals("Repayment reminder for you", itemFallback.eventDescription.asString(context))
+    }
+
+    /**
+     * TEST S: User-entered notes are preserved while system markers and reminder notes are suppressed
+     */
+    @Test
+    fun testS_activityNotesHandlingPreservesUserNotesAndSuppressesSystemNotes() {
+        // Genuine user note preserved
+        val itemUserNote = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.TRANSACTION_CREATED,
+                    friendId = 1L,
+                    amount = 500.0,
+                    direction = TransactionDirection.LENT,
+                    note = "Dinner split"
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertEquals("Dinner split", itemUserNote.note)
+
+        // final_repayment marker suppressed
+        val itemFinalRepayment = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.SETTLED,
+                    friendId = 1L,
+                    amount = 200.0,
+                    direction = TransactionDirection.LENT,
+                    note = "final_repayment"
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertNull(itemFinalRepayment.note)
+
+        // System reminder note suppressed
+        val itemReminderNote = ActivityViewModel.mapToDisplayItem(
+            ActivityWithFriend(
+                activity = ActivityEntity(
+                    type = ActivityType.REMINDER_SENT,
+                    friendId = 1L,
+                    reminderStage = ReminderStage.DAY_7,
+                    note = "7-day reminder sent"
+                ),
+                friendName = "Priya"
+            )
+        )
+        assertNull(itemReminderNote.note)
+    }
+
+    /**
+     * TEST T: Lifecycle refresh recomputes relative date headers without altering stored timestamps
+     */
+    @Test
+    fun testT_activityViewModelLifecycleRefreshRecomputesRelativeDates() = runTest(testDispatcher) {
+        val friendId = friendDao.insertFriend(Friend(name = "Amit"))
+
+        // Create an activity timestamped at fixed time
+        val calendar = Calendar.getInstance()
+        val eventTime = calendar.timeInMillis
+        activityDao.insertActivity(
+            ActivityEntity(
+                type = ActivityType.TRANSACTION_CREATED,
+                friendId = friendId,
+                amount = 1000.0,
+                direction = TransactionDirection.LENT,
+                createdAt = eventTime
+            )
+        )
+
+        val vm = ActivityViewModel(repository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // When now is same day as event
+        vm.refreshDateGrouping(eventTime)
+        testDispatcher.scheduler.advanceUntilIdle()
+        val stateSameDay = vm.uiState.first { !it.isLoading && it.groupedActivities.isNotEmpty() }
+        val dateHeaderSameDay = stateSameDay.groupedActivities.keys.first()
+        assertEquals("Today", dateHeaderSameDay)
+
+        // When time advances by 24 hours into the next day
+        calendar.timeInMillis = eventTime
+        calendar.add(Calendar.DAY_OF_YEAR, 1)
+        vm.refreshDateGrouping(calendar.timeInMillis)
+        testDispatcher.scheduler.advanceUntilIdle()
+        val stateNextDay = vm.uiState.first { !it.isLoading && it.groupedActivities.isNotEmpty() }
+        val dateHeaderNextDay = stateNextDay.groupedActivities.keys.first()
+        assertEquals("Yesterday", dateHeaderNextDay)
+
+        // Verify stored entity timestamp is unchanged
+        val storedActivities = activityDao.getAllActivities().first()
+        assertEquals(eventTime, storedActivities[0].createdAt)
     }
 }

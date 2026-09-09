@@ -3,6 +3,7 @@ package com.example.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.R
 import com.example.data.model.ActivityType
 import com.example.data.model.ActivityWithFriend
 import com.example.data.model.NeedsAttentionItem
@@ -10,6 +11,8 @@ import com.example.data.model.ReminderStage
 import com.example.data.model.TransactionDirection
 import com.example.data.repository.PhittoosRepository
 import com.example.ui.util.Formatters
+import com.example.ui.util.UiMessage
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -20,7 +23,7 @@ data class ActivityDisplayItem(
     val type: ActivityType,
     val friendId: Long,
     val friendName: String,
-    val eventDescription: String,
+    val eventDescription: UiMessage,
     val formattedAmount: String,
     val formattedTime: String,
     val note: String?,
@@ -43,16 +46,23 @@ class ActivityViewModel(
     private val repository: PhittoosRepository
 ) : ViewModel() {
 
+    private val refreshTrigger = MutableStateFlow(System.currentTimeMillis())
+
+    fun refreshDateGrouping(nowMillis: Long = System.currentTimeMillis()) {
+        refreshTrigger.value = nowMillis
+    }
+
     val uiState: StateFlow<ActivityUiState> = combine(
         repository.needsAttentionItems,
-        repository.activitiesWithFriend
-    ) { needsAttention, activitiesWithFriend ->
+        repository.activitiesWithFriend,
+        refreshTrigger
+    ) { needsAttention, activitiesWithFriend, nowMillis ->
         val displayItems = activitiesWithFriend.map { mapToDisplayItem(it) }
 
         // Group by calendar date string ("Today", "Yesterday", "5 Sep", etc.)
         // LinkedHashMap preserves reverse-chronological group order
         val grouped = displayItems.groupBy { item ->
-            Formatters.formatDate(item.timestamp)
+            Formatters.formatDate(item.timestamp, nowMillis = nowMillis)
         }
 
         ActivityUiState(
@@ -75,39 +85,44 @@ class ActivityViewModel(
             val eventDescription = when (act.type) {
                 ActivityType.TRANSACTION_CREATED -> {
                     when (act.direction) {
-                        TransactionDirection.LENT -> "Lent $amtStr"
-                        TransactionDirection.BORROWED -> "Borrowed $amtStr"
-                        else -> "Added $amtStr"
+                        TransactionDirection.LENT -> UiMessage(R.string.activity_event_lent_created, amtStr)
+                        TransactionDirection.BORROWED -> UiMessage(R.string.activity_event_borrowed_created, amtStr)
+                        else -> UiMessage(R.string.activity_event_added, amtStr)
                     }
                 }
                 ActivityType.PARTIAL_REPAYMENT -> {
                     when (act.direction) {
-                        TransactionDirection.LENT -> "Received $amtStr"
-                        TransactionDirection.BORROWED -> "Paid $amtStr"
-                        else -> "Repaid $amtStr"
+                        TransactionDirection.LENT -> UiMessage(R.string.activity_event_lent_partial, amtStr)
+                        TransactionDirection.BORROWED -> UiMessage(R.string.activity_event_borrowed_partial, amtStr)
+                        else -> UiMessage(R.string.activity_event_repaid, amtStr)
                     }
                 }
                 ActivityType.SETTLED -> {
                     if (act.note == "final_repayment") {
                         when (act.direction) {
-                            TransactionDirection.LENT -> "Received final $amtStr · Settled"
-                            TransactionDirection.BORROWED -> "Paid final $amtStr · Settled"
-                            else -> "$amtStr settled"
+                            TransactionDirection.LENT -> UiMessage(R.string.activity_event_lent_final, amtStr)
+                            TransactionDirection.BORROWED -> UiMessage(R.string.activity_event_borrowed_final, amtStr)
+                            else -> UiMessage(R.string.activity_event_manual_settled, amtStr)
                         }
                     } else {
-                        "$amtStr settled"
+                        UiMessage(R.string.activity_event_manual_settled, amtStr)
                     }
                 }
-                ActivityType.BECAME_OVERDUE -> "$amtStr became overdue"
+                ActivityType.BECAME_OVERDUE -> UiMessage(R.string.activity_event_overdue, amtStr)
                 ActivityType.REMINDER_SENT -> {
                     when (act.reminderStage) {
-                        ReminderStage.DAY_7 -> "7-day reminder sent"
-                        ReminderStage.DAY_15 -> "15-day reminder sent"
-                        ReminderStage.DAY_30 -> "30-day reminder sent"
-                        null -> "Reminder sent"
+                        ReminderStage.DAY_7 -> UiMessage(R.string.activity_reminder_day_7)
+                        ReminderStage.DAY_15 -> UiMessage(R.string.activity_reminder_day_15)
+                        ReminderStage.DAY_30 -> UiMessage(R.string.activity_reminder_day_30)
+                        null -> UiMessage(R.string.activity_reminder_fallback)
                     }
                 }
             }
+
+            val isSystemGeneratedNote = act.note == "final_repayment" ||
+                act.type == ActivityType.REMINDER_SENT ||
+                act.reminderStage != null ||
+                act.note?.endsWith("reminder sent", ignoreCase = true) == true
 
             return ActivityDisplayItem(
                 id = act.id,
@@ -117,7 +132,7 @@ class ActivityViewModel(
                 eventDescription = eventDescription,
                 formattedAmount = amtStr,
                 formattedTime = Formatters.formatTime(act.createdAt),
-                note = if (act.note != "final_repayment") act.note else null,
+                note = if (isSystemGeneratedNote) null else act.note,
                 direction = act.direction,
                 timestamp = act.createdAt,
                 reminderStage = act.reminderStage

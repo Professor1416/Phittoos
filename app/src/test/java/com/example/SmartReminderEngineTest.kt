@@ -796,11 +796,12 @@ class SmartReminderEngineTest {
         val itemDay15 = allActivities.find { it.reminderStage == ReminderStage.DAY_15 }
         val itemDay7 = allActivities.find { it.reminderStage == ReminderStage.DAY_7 }
 
+        val context = ApplicationProvider.getApplicationContext<Context>()
         assertNotNull(itemDay15)
-        assertEquals("15-day reminder sent", itemDay15?.eventDescription)
+        assertEquals("Reminder for you · 15 days overdue", itemDay15?.eventDescription?.asString(context))
 
         assertNotNull(itemDay7)
-        assertEquals("7-day reminder sent", itemDay7?.eventDescription)
+        assertEquals("Reminder for you · 7 days overdue", itemDay7?.eventDescription?.asString(context))
     }
 
     // T. Database migration 3 -> 4 preserves data and allows null reminder_stage

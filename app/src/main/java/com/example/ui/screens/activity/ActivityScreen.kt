@@ -47,13 +47,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
 import com.example.data.model.ActivityType
 import com.example.data.model.NeedsAttentionItem
 import com.example.data.model.TransactionDirection
@@ -85,6 +90,10 @@ fun ActivityScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshDateGrouping()
+    }
+
     Scaffold(
         modifier = modifier
             .fillMaxSize()
@@ -95,13 +104,13 @@ fun ActivityScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Activity",
+                            text = stringResource(R.string.activity_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = Slate900
                         )
                         Text(
-                            text = "Recent money activity",
+                            text = stringResource(R.string.activity_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = Slate500
                         )
@@ -114,7 +123,7 @@ fun ActivityScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.activity_cd_back),
                             tint = Slate800
                         )
                     }
@@ -135,7 +144,7 @@ fun ActivityScreen(
             if (uiState.needsAttentionItems.isNotEmpty()) {
                 item {
                     Text(
-                        text = "NEEDS ATTENTION (${uiState.needsAttentionItems.size})",
+                        text = stringResource(R.string.activity_header_needs_attention, uiState.needsAttentionItems.size),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = CoralOrangeDark,
@@ -170,7 +179,7 @@ fun ActivityScreen(
                 // 3. Recent Activity timeline
                 item {
                     Text(
-                        text = "RECENT ACTIVITY",
+                        text = stringResource(R.string.activity_header_recent_activity),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = Slate500,
@@ -183,7 +192,7 @@ fun ActivityScreen(
                 uiState.groupedActivities.forEach { (dateHeader, activities) ->
                     item(key = "header_$dateHeader") {
                         Text(
-                            text = dateHeader.uppercase(),
+                            text = dateHeader,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = Slate400,
@@ -212,10 +221,14 @@ private fun NeedsAttentionCard(
     item: NeedsAttentionItem,
     onClick: () -> Unit
 ) {
+    val clickActionLabel = stringResource(R.string.activity_action_view_friend_details)
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(
+                onClickLabel = clickActionLabel,
+                onClick = onClick
+            )
             .testTag("card_needs_attention_${item.transactionId}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CoralOrangeSurface),
@@ -258,7 +271,10 @@ private fun NeedsAttentionCard(
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "${Formatters.formatCurrency(item.remainingAmount)} remaining",
+                        text = stringResource(
+                            R.string.activity_remaining_amount,
+                            Formatters.formatCurrency(item.remainingAmount)
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = Slate800
@@ -275,7 +291,7 @@ private fun NeedsAttentionCard(
 
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = "View Friend",
+                contentDescription = null,
                 tint = CoralOrangeDark,
                 modifier = Modifier.size(18.dp)
             )
@@ -288,10 +304,15 @@ private fun ActivityRowCard(
     item: ActivityDisplayItem,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val clickActionLabel = stringResource(R.string.activity_action_view_friend_details)
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(
+                onClickLabel = clickActionLabel,
+                onClick = onClick
+            )
             .testTag("activity_item_${item.id}"),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -352,7 +373,7 @@ private fun ActivityRowCard(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 Text(
-                    text = item.eventDescription,
+                    text = item.eventDescription.asString(context),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = Slate700
@@ -370,7 +391,7 @@ private fun ActivityRowCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = Slate500,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -415,7 +436,7 @@ private fun EmptyActivityState() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "No activity yet",
+                text = stringResource(R.string.activity_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Slate800
@@ -424,7 +445,7 @@ private fun EmptyActivityState() {
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "Transactions, repayments and settlements will appear here.",
+                text = stringResource(R.string.activity_empty_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Slate500,
                 textAlign = TextAlign.Center

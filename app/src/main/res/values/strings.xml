@@ -57,4 +57,33 @@
     <!-- Export Data -->
     <string name="export_data_title">Export data</string>
     <string name="export_data_subtitle">Save your transactions as a CSV file</string>
+
+    <!-- Activity Screen Headings & Navigation -->
+    <string name="activity_title">Activity</string>
+    <string name="activity_subtitle">Recent money activity</string>
+    <string name="activity_cd_back">Back</string>
+    <string name="activity_header_needs_attention">Needs attention (%d)</string>
+    <string name="activity_header_recent_activity">Recent activity</string>
+    <string name="activity_empty_title">No activity yet</string>
+    <string name="activity_empty_subtitle">Transactions, repayments and settlements will appear here.</string>
+    <string name="activity_action_view_friend_details">View friend details</string>
+    <string name="activity_remaining_amount">%s remaining</string>
+
+    <!-- Activity Event Descriptions -->
+    <string name="activity_event_lent_created">You gave %s</string>
+    <string name="activity_event_borrowed_created">You took %s</string>
+    <string name="activity_event_added">Added %s</string>
+    <string name="activity_event_lent_partial">You received %s back</string>
+    <string name="activity_event_borrowed_partial">You paid back %s</string>
+    <string name="activity_event_repaid">Repaid %s</string>
+    <string name="activity_event_lent_final">You received the final %s back</string>
+    <string name="activity_event_borrowed_final">You paid back the final %s</string>
+    <string name="activity_event_manual_settled">Marked %s as paid</string>
+    <string name="activity_event_overdue">%s is overdue</string>
+
+    <!-- Activity Owner-Only Reminders -->
+    <string name="activity_reminder_day_7">Reminder for you · 7 days overdue</string>
+    <string name="activity_reminder_day_15">Reminder for you · 15 days overdue</string>
+    <string name="activity_reminder_day_30">Reminder for you · 30 days overdue</string>
+    <string name="activity_reminder_fallback">Repayment reminder for you</string>
 </resources>
