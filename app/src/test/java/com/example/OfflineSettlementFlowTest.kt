@@ -3,6 +3,7 @@ package com.example
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.example.R
 import com.example.data.db.AppDatabase
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
@@ -11,6 +12,7 @@ import com.example.data.model.effectiveRemainingAmount
 import com.example.data.repository.PhittoosRepository
 import com.example.data.repository.RepaymentErrorReason
 import com.example.data.repository.RepaymentResult
+import com.example.ui.util.UiMessage
 import com.example.ui.viewmodel.BulkSettlementEligibility
 import com.example.ui.viewmodel.FriendDetailViewModel
 import kotlinx.coroutines.Dispatchers
@@ -458,6 +460,7 @@ class OfflineSettlementFlowTest {
      */
     @Test
     fun testK_plainLanguageSettlementMessages() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val friendId = repository.insertFriend("Manoj")
         val txId = repository.addTransaction(friendId, 500.0, TransactionDirection.LENT, "Loan")
 
@@ -467,7 +470,10 @@ class OfflineSettlementFlowTest {
         vm.recordRepayment(txId, 200.0)
         testScheduler.advanceUntilIdle()
         val stateAfterPartial = vm.uiState.first { it.toastMessage != null }
-        assertEquals("Repayment of ₹200 recorded.", stateAfterPartial.toastMessage)
+        val msgPartial = stateAfterPartial.toastMessage!!
+        assertEquals(R.string.msg_repayment_recorded, msgPartial.resId)
+        assertEquals(listOf("₹200"), msgPartial.formatArgs)
+        assertEquals("Repayment of ₹200 recorded.", msgPartial.asString(context))
 
         vm.clearToast()
 
@@ -475,7 +481,10 @@ class OfflineSettlementFlowTest {
         vm.recordRepayment(txId, 300.0)
         testScheduler.advanceUntilIdle()
         val stateAfterFinal = vm.uiState.first { it.toastMessage != null }
-        assertEquals("Final repayment of ₹300 recorded.", stateAfterFinal.toastMessage)
+        val msgFinal = stateAfterFinal.toastMessage!!
+        assertEquals(R.string.msg_final_repayment_recorded, msgFinal.resId)
+        assertEquals(listOf("₹300"), msgFinal.formatArgs)
+        assertEquals("Final repayment of ₹300 recorded.", msgFinal.asString(context))
 
         vm.clearToast()
 
@@ -484,7 +493,10 @@ class OfflineSettlementFlowTest {
         vm.settleTransaction(txId2)
         testScheduler.advanceUntilIdle()
         val stateAfterSingle = vm.uiState.first { it.toastMessage != null }
-        assertEquals("Marked as fully paid.", stateAfterSingle.toastMessage)
+        val msgSingle = stateAfterSingle.toastMessage!!
+        assertEquals(R.string.msg_marked_as_fully_paid, msgSingle.resId)
+        assertTrue(msgSingle.formatArgs.isEmpty())
+        assertEquals("Marked as fully paid.", msgSingle.asString(context))
 
         vm.clearToast()
 
@@ -494,12 +506,15 @@ class OfflineSettlementFlowTest {
         vm.settleAllSameDirection()
         testScheduler.advanceUntilIdle()
         val stateAfterBulk = vm.uiState.first { it.toastMessage != null }
-        assertEquals("Selected transactions marked as fully paid.", stateAfterBulk.toastMessage)
+        val msgBulk = stateAfterBulk.toastMessage!!
+        assertEquals(R.string.msg_selected_transactions_fully_paid, msgBulk.resId)
+        assertTrue(msgBulk.formatArgs.isEmpty())
+        assertEquals("Selected transactions marked as fully paid.", msgBulk.asString(context))
     }
 
     /**
      * TEST L:
-     * Verify plain-language error messages and typed error reasons:
+     * Verify plain-language error messages and typed error reasons in Repository:
      * - Invalid repayment amount -> "Enter an amount greater than ₹0."
      * - Non-existent transaction -> "This transaction could not be found."
      * - Already settled transaction -> "This transaction is already fully paid."
@@ -542,5 +557,71 @@ class OfflineSettlementFlowTest {
         val errAlreadySettled = resAlreadySettled as RepaymentResult.Error
         assertEquals("This transaction is already fully paid.", errAlreadySettled.message)
         assertEquals(RepaymentErrorReason.ALREADY_SETTLED, errAlreadySettled.reason)
+    }
+
+    /**
+     * TEST M:
+     * Verify ViewModel maps typed RepaymentErrorReason values to resource-backed UiMessage descriptors
+     * and correctly passes to onError callback and toastMessage.
+     */
+    @Test
+    fun testM_plainLanguageRepaymentErrorInViewModel() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val friendId = repository.insertFriend("Kavita")
+        val txId = repository.addTransaction(friendId, 500.0, TransactionDirection.LENT, "Loan")
+
+        val vm = FriendDetailViewModel(repository, friendId)
+
+        // 1. Invalid repayment amount <= 0
+        var receivedError: UiMessage? = null
+        vm.recordRepayment(txId, 0.0, onError = { receivedError = it })
+        testScheduler.advanceUntilIdle()
+
+        val stateAfterZero = vm.uiState.first { it.toastMessage != null }
+        val msgZero = stateAfterZero.toastMessage!!
+        assertEquals(R.string.error_repayment_amount_invalid, msgZero.resId)
+        assertEquals("Enter an amount greater than ₹0.", msgZero.asString(context))
+        assertEquals(msgZero, receivedError)
+
+        vm.clearToast()
+
+        // 2. Exceeds remaining
+        var receivedExceedError: UiMessage? = null
+        vm.recordRepayment(txId, 600.0, onError = { receivedExceedError = it })
+        testScheduler.advanceUntilIdle()
+
+        val stateAfterExceed = vm.uiState.first { it.toastMessage != null }
+        val msgExceed = stateAfterExceed.toastMessage!!
+        assertEquals(R.string.error_repayment_exceeds_remaining, msgExceed.resId)
+        assertEquals(listOf("₹500"), msgExceed.formatArgs)
+        assertEquals("Enter ₹500 or less. That’s the amount left to pay.", msgExceed.asString(context))
+        assertEquals(msgExceed, receivedExceedError)
+
+        vm.clearToast()
+
+        // 3. Settle transaction, then attempt repayment -> ALREADY_SETTLED
+        repository.markTransactionAsPaid(txId)
+        var receivedSettledError: UiMessage? = null
+        vm.recordRepayment(txId, 100.0, onError = { receivedSettledError = it })
+        testScheduler.advanceUntilIdle()
+
+        val stateAfterSettled = vm.uiState.first { it.toastMessage != null }
+        val msgSettled = stateAfterSettled.toastMessage!!
+        assertEquals(R.string.msg_transaction_already_paid, msgSettled.resId)
+        assertEquals("This transaction is already fully paid.", msgSettled.asString(context))
+        assertEquals(msgSettled, receivedSettledError)
+
+        vm.clearToast()
+
+        // 4. Missing transaction -> TRANSACTION_NOT_FOUND
+        var receivedNotFoundError: UiMessage? = null
+        vm.recordRepayment(99999L, 100.0, onError = { receivedNotFoundError = it })
+        testScheduler.advanceUntilIdle()
+
+        val stateAfterNotFound = vm.uiState.first { it.toastMessage != null }
+        val msgNotFound = stateAfterNotFound.toastMessage!!
+        assertEquals(R.string.msg_transaction_not_found, msgNotFound.resId)
+        assertEquals("This transaction could not be found.", msgNotFound.asString(context))
+        assertEquals(msgNotFound, receivedNotFoundError)
     }
 }

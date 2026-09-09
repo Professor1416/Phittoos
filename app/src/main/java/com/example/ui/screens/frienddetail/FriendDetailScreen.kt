@@ -97,6 +97,7 @@ import com.example.ui.theme.Slate600
 import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate900
 import com.example.ui.util.Formatters
+import com.example.ui.util.UiMessage
 import com.example.ui.viewmodel.BulkSettlementEligibility
 import com.example.ui.viewmodel.FriendDetailViewModel
 import kotlin.math.abs
@@ -118,7 +119,7 @@ fun FriendDetailScreen(
 
     LaunchedEffect(uiState.toastMessage) {
         uiState.toastMessage?.let { msg ->
-            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, msg.asString(context), Toast.LENGTH_SHORT).show()
             viewModel.clearToast()
         }
     }
@@ -975,7 +976,7 @@ internal fun RepaymentDialog(
     val alreadyPaid = tx.effectivePaidAmount
 
     var amountInput by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<UiMessage?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
 
     val parsedAmount = amountInput.toDoubleOrNull()
@@ -1055,7 +1056,7 @@ internal fun RepaymentDialog(
                     supportingText = if (errorMessage != null) {
                         {
                             Text(
-                                text = errorMessage!!,
+                                text = errorMessage!!.asString(context),
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.testTag("text_repayment_error")
                             )
@@ -1100,17 +1101,17 @@ internal fun RepaymentDialog(
                     if (isSubmitting) return@Button
                     val trimmed = amountInput.trim()
                     if (trimmed.isEmpty()) {
-                        errorMessage = context.getString(R.string.error_repayment_amount_invalid)
+                        errorMessage = UiMessage(R.string.error_repayment_amount_invalid)
                         return@Button
                     }
                     val amount = trimmed.toDoubleOrNull()
                     if (amount == null || amount.isNaN() || amount.isInfinite() || amount <= 0.0) {
-                        errorMessage = context.getString(R.string.error_repayment_amount_invalid)
+                        errorMessage = UiMessage(R.string.error_repayment_amount_invalid)
                         return@Button
                     }
                     if (amount > remaining + 0.0001) {
                         val formattedRem = Formatters.formatCurrency(remaining)
-                        errorMessage = context.getString(R.string.error_repayment_exceeds_remaining, formattedRem)
+                        errorMessage = UiMessage(R.string.error_repayment_exceeds_remaining, formattedRem)
                         return@Button
                     }
 

@@ -46,6 +46,7 @@
     <string name="msg_transaction_not_found">This transaction could not be found.</string>
     <string name="error_repayment_amount_invalid">Enter an amount greater than ₹0.</string>
     <string name="error_repayment_exceeds_remaining">Enter %s or less. That’s the amount left to pay.</string>
+    <string name="error_repayment_generic">Something went wrong. Please try again.</string>
 
     <!-- Clear Data Dialog -->
     <string name="dialog_clear_data_title">Delete all Phittoos data?</string>

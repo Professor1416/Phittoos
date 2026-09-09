@@ -3,16 +3,19 @@ package com.example.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.R
 import com.example.data.model.Friend
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
 import com.example.data.model.effectiveRemainingAmount
 import com.example.data.repository.PhittoosRepository
+import com.example.data.repository.RepaymentErrorReason
 import com.example.data.repository.RepaymentResult
 import com.example.domain.ReliabilityEngine
 import com.example.domain.ReliabilityInfo
 import com.example.ui.util.Formatters
+import com.example.ui.util.UiMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +38,7 @@ data class FriendDetailUiState(
     val openTransactionsCount: Int = 0,
     val isLoading: Boolean = true,
     val isFriendNotFound: Boolean = false,
-    val toastMessage: String? = null,
+    val toastMessage: UiMessage? = null,
     val bulkSettlementEligibility: BulkSettlementEligibility = BulkSettlementEligibility.NONE,
     val bulkSettlementTotalRemaining: Double = 0.0,
     val bulkSettlementOpenCount: Int = 0,
@@ -49,7 +52,7 @@ class FriendDetailViewModel(
     private val friendId: Long
 ) : ViewModel() {
 
-    private val _toastMessage = MutableStateFlow<String?>(null)
+    private val _toastMessage = MutableStateFlow<UiMessage?>(null)
     private val _settlingTransactionIds = MutableStateFlow<Set<Long>>(emptySet())
     private val _isBulkSettling = MutableStateFlow(false)
 
@@ -134,7 +137,7 @@ class FriendDetailViewModel(
                 val tx = repository.getTransactionById(transactionId)
                 if (tx != null && tx.status == TransactionStatus.OPEN) {
                     repository.markTransactionAsPaid(transactionId)
-                    _toastMessage.value = "Marked as fully paid."
+                    _toastMessage.value = UiMessage(R.string.msg_marked_as_fully_paid)
                 }
             } finally {
                 _settlingTransactionIds.update { it - transactionId }
@@ -146,7 +149,7 @@ class FriendDetailViewModel(
         transactionId: Long,
         amount: Double,
         onSuccess: (() -> Unit)? = null,
-        onError: ((String) -> Unit)? = null
+        onError: ((UiMessage) -> Unit)? = null
     ) {
         if (_settlingTransactionIds.value.contains(transactionId)) return
         _settlingTransactionIds.update { it + transactionId }
@@ -157,9 +160,9 @@ class FriendDetailViewModel(
                     is RepaymentResult.Success -> {
                         val formatted = Formatters.formatCurrency(amount)
                         if (result.isFullySettled) {
-                            _toastMessage.value = "Final repayment of $formatted recorded."
+                            _toastMessage.value = UiMessage(R.string.msg_final_repayment_recorded, formatted)
                         } else {
-                            _toastMessage.value = "Repayment of $formatted recorded."
+                            _toastMessage.value = UiMessage(R.string.msg_repayment_recorded, formatted)
                         }
                         onSuccess?.invoke()
                     }
@@ -175,24 +178,24 @@ class FriendDetailViewModel(
         }
     }
 
-    private fun resolveRepaymentErrorMessage(error: RepaymentResult.Error): String {
+    private fun resolveRepaymentErrorMessage(error: RepaymentResult.Error): UiMessage {
         return when (error.reason) {
-            com.example.data.repository.RepaymentErrorReason.INVALID_AMOUNT ->
-                "Enter an amount greater than ₹0."
-            com.example.data.repository.RepaymentErrorReason.TRANSACTION_NOT_FOUND ->
-                "This transaction could not be found."
-            com.example.data.repository.RepaymentErrorReason.ALREADY_SETTLED ->
-                "This transaction is already fully paid."
-            com.example.data.repository.RepaymentErrorReason.EXCEEDS_REMAINING -> {
+            RepaymentErrorReason.INVALID_AMOUNT ->
+                UiMessage(R.string.error_repayment_amount_invalid)
+            RepaymentErrorReason.TRANSACTION_NOT_FOUND ->
+                UiMessage(R.string.msg_transaction_not_found)
+            RepaymentErrorReason.ALREADY_SETTLED ->
+                UiMessage(R.string.msg_transaction_already_paid)
+            RepaymentErrorReason.EXCEEDS_REMAINING -> {
                 val remaining = error.remainingAmount
                 if (remaining != null) {
-                    "Enter ${Formatters.formatCurrency(remaining)} or less. That’s the amount left to pay."
+                    UiMessage(R.string.error_repayment_exceeds_remaining, Formatters.formatCurrency(remaining))
                 } else {
-                    error.message
+                    UiMessage(R.string.error_repayment_generic)
                 }
             }
-            com.example.data.repository.RepaymentErrorReason.NO_LONGER_OPEN ->
-                "This transaction is no longer pending."
+            RepaymentErrorReason.NO_LONGER_OPEN ->
+                UiMessage(R.string.msg_transaction_no_longer_pending)
         }
     }
 
@@ -204,7 +207,7 @@ class FriendDetailViewModel(
             try {
                 val success = repository.settleAllSameDirectionForFriend(friendId)
                 if (success) {
-                    _toastMessage.value = "Selected transactions marked as fully paid."
+                    _toastMessage.value = UiMessage(R.string.msg_selected_transactions_fully_paid)
                 }
             } finally {
                 _isBulkSettling.value = false
