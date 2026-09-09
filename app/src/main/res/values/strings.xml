@@ -1,3 +1,46 @@
 <resources>
     <string name="app_name">Phittoos</string>
+    <string name="tagline">Tera Mera Hisaab Phittoos</string>
+    <string name="app_description">Track money between you and your friends. No bank linking. No group setup.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_get_started">Get Started</string>
+    <string name="onboarding_whats_your_name">What\'s your name?</string>
+    <string name="onboarding_name_subtitle">This is how you\'ll appear on your shared records and reminder messages.</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_enter_name_error">Please enter your name</string>
+
+    <!-- Add Transaction Direction -->
+    <string name="tx_question_what_happened">What happened?</string>
+    <string name="tx_direction_i_gave">I gave money</string>
+    <string name="tx_direction_i_gave_sub">They have to return it to me</string>
+    <string name="tx_direction_i_took">I took money</string>
+    <string name="tx_direction_i_took_sub">I have to return it</string>
+    <string name="tx_button_add_transaction">Add transaction</string>
+
+    <!-- Home Balance Context -->
+    <string name="home_you_will_get_back">You\'ll get back</string>
+    <string name="home_you_owe">You owe</string>
+    <string name="home_all_settled">All settled</string>
+
+    <!-- Friend Detail Actions & Settlement -->
+    <string name="action_add_transaction">Add transaction</string>
+    <string name="action_settle_this">Settle this</string>
+    <string name="dialog_settle_single_title">Mark this as fully paid?</string>
+    <string name="dialog_settle_keep_pending">Keep pending</string>
+    <string name="dialog_settle_mark_paid">Mark as paid</string>
+    <string name="dialog_settle_bulk_title">Settle all pending transactions?</string>
+    <string name="dialog_settle_bulk_confirm">Mark all as paid</string>
+    <string name="mixed_direction_title">Settle individually</string>
+    <string name="mixed_direction_body">You have pending transactions in both directions. Settle them individually to keep your records accurate.</string>
+
+    <!-- Clear Data Dialog -->
+    <string name="dialog_clear_data_title">Delete all Phittoos data?</string>
+    <string name="dialog_clear_data_body">Your friends, transactions and activity history on this device will be permanently deleted.</string>
+    <string name="dialog_clear_data_cancel">Keep my data</string>
+    <string name="dialog_clear_data_confirm">Delete everything</string>
+
+    <!-- Export Data -->
+    <string name="export_data_title">Export data</string>
+    <string name="export_data_subtitle">Save your transactions as a CSV file</string>
 </resources>

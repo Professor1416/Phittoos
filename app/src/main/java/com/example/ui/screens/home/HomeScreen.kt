@@ -45,6 +45,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import com.example.domain.ReliabilityLevel
 import com.example.ui.components.ReliabilityPill
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -418,16 +419,16 @@ private fun TopSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Overall Balance",
+                    text = "Overall",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Slate500,
                     fontWeight = FontWeight.Medium
                 )
 
                 val netText = when {
-                    netPosition > 0 -> "Net: +${Formatters.formatCurrency(netPosition)}"
-                    netPosition < 0 -> "Net: -${Formatters.formatCurrency(kotlin.math.abs(netPosition))}"
-                    else -> "Net: ₹0 (Phittoos!)"
+                    netPosition > 0 -> "You'll receive ${Formatters.formatCurrency(netPosition)}"
+                    netPosition < 0 -> "You need to pay ${Formatters.formatCurrency(kotlin.math.abs(netPosition))}"
+                    else -> "All settled up (₹0)"
                 }
 
                 val netColor = when {
@@ -440,7 +441,9 @@ private fun TopSummaryCard(
                     text = netText,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = netColor
+                    color = netColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -564,9 +567,10 @@ private fun FriendRowItem(
                         modifier = Modifier.weight(1f, fill = false)
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    ReliabilityPill(level = friendWithBalance.reliabilityInfo.level)
+                    if (friendWithBalance.reliabilityInfo.level != ReliabilityLevel.NEW) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        ReliabilityPill(level = friendWithBalance.reliabilityInfo.level)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(3.dp))
@@ -627,7 +631,7 @@ private fun FriendRowItem(
                     }
                     else -> {
                         Text(
-                            text = "Settled",
+                            text = "All settled",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = Slate500

@@ -99,14 +99,14 @@ fun OnboardingScreen(
         }
         nameError = null
         userPreferences.userName = trimmed
-        step = 3
+        completeAndGoHome()
     }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            // Step Progress Indicator at top
+            // Step Progress Indicator at top: 2 steps in Offline V1
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -115,7 +115,7 @@ fun OnboardingScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                for (i in 1..3) {
+                for (i in 1..2) {
                     Box(
                         modifier = Modifier
                             .height(6.dp)
@@ -123,7 +123,7 @@ fun OnboardingScreen(
                             .clip(CircleShape)
                             .background(if (step >= i) EmeraldGreen else Slate200)
                     )
-                    if (i < 3) Spacer(modifier = Modifier.width(8.dp))
+                    if (i < 2) Spacer(modifier = Modifier.width(8.dp))
                 }
             }
         },
@@ -181,40 +181,6 @@ fun OnboardingScreen(
                             )
                         }
                     }
-                    3 -> {
-                        Button(
-                            onClick = {
-                                completeAndGoHome()
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .testTag("button_allow_contacts")
-                        ) {
-                            Icon(Icons.Default.Contacts, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Allow Contacts Access", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        TextButton(
-                            onClick = { completeAndGoHome() },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp)
-                                .testTag("button_skip_contacts")
-                        ) {
-                            Text(
-                                text = "Skip for now",
-                                color = Slate500,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 15.sp
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -249,7 +215,6 @@ fun OnboardingScreen(
                             },
                             onDone = { proceedFromStep2() }
                         )
-                        3 -> OnboardingPermissionStep()
                     }
                 }
             }
@@ -364,7 +329,7 @@ private fun OnboardingNameStep(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "This will be used to identify you to friends when they confirm payments.",
+            text = "This is how you'll appear on your shared records and reminder messages.",
             style = MaterialTheme.typography.bodyMedium,
             color = Slate500,
             textAlign = TextAlign.Center,

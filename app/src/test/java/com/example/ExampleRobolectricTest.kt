@@ -63,12 +63,6 @@ class ExampleRobolectricTest {
     composeTestRule.onNodeWithTag("input_user_name").performTextInput("Rahul")
     composeTestRule.onNodeWithTag("button_name_continue").assertIsDisplayed().performClick()
 
-    // Screen 3: Should show "Pick friends faster"
-    composeTestRule.onNodeWithText("Pick friends faster").assertIsDisplayed()
-
-    // Click Skip
-    composeTestRule.onNodeWithTag("button_skip_contacts").assertIsDisplayed().performClick()
-
     assertTrue(completed)
     assertTrue(prefs.hasCompletedOnboarding)
     assertEquals("Rahul", prefs.userName)
@@ -210,8 +204,8 @@ class ExampleRobolectricTest {
       }
     }
 
-    composeTestRule.onNodeWithText("Settle ₹500?", substring = true).assertIsDisplayed()
-    composeTestRule.onNodeWithText("Mark this as settled only if Akash has paid you back.", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Mark this as fully paid?").assertIsDisplayed()
+    composeTestRule.onNodeWithText("₹500 is still pending from Akash. This will mark this transaction as settled.", substring = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("button_confirm_settle_individual").performClick()
     assertTrue(confirmed)
   }
@@ -233,8 +227,8 @@ class ExampleRobolectricTest {
       }
     }
 
-    composeTestRule.onNodeWithText("Settle ₹800 with Pooja?", substring = true).assertIsDisplayed()
-    composeTestRule.onNodeWithText("2 lent transactions will be marked as settled.", substring = true).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Settle all pending transactions?").assertIsDisplayed()
+    composeTestRule.onNodeWithText("This will mark all 2 pending transactions (₹800) from Pooja as fully paid.", substring = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("button_confirm_settle_bulk").performClick()
     assertTrue(confirmed)
   }

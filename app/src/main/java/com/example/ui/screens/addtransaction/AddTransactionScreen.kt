@@ -196,7 +196,7 @@ fun AddTransactionScreen(
                             .testTag("button_save_transaction")
                     ) {
                         Text(
-                            text = if (uiState.isSaving) "Saving..." else "Save Transaction",
+                            text = if (uiState.isSaving) "Saving..." else "Add transaction",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isReady) Color.White else Slate400
@@ -428,7 +428,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2. TOGGLE: "I LENT" / "I BORROWED" (Large, thumb-friendly)
+            // 2. TOGGLE: "I GAVE MONEY" / "I TOOK MONEY" (Large, thumb-friendly)
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -437,7 +437,7 @@ fun AddTransactionScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "2. TRANSACTION TYPE",
+                        text = "2. WHAT HAPPENED?",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = Slate500
@@ -448,7 +448,7 @@ fun AddTransactionScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // "I Lent" Button
+                        // "I gave money" Button
                         val isLent = uiState.direction == TransactionDirection.LENT
                         Box(
                             modifier = Modifier
@@ -470,17 +470,17 @@ fun AddTransactionScreen(
                                     tint = if (isLent) Color.White else Slate500,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "I Lent",
-                                    fontSize = 16.sp,
+                                    text = "I gave money",
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = if (isLent) Color.White else Slate700
                                 )
                             }
                         }
 
-                        // "I Borrowed" Button
+                        // "I took money" Button
                         val isBorrowed = uiState.direction == TransactionDirection.BORROWED
                         Box(
                             modifier = Modifier
@@ -502,16 +502,33 @@ fun AddTransactionScreen(
                                     tint = if (isBorrowed) Color.White else Slate500,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "I Borrowed",
-                                    fontSize = 16.sp,
+                                    text = "I took money",
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = if (isBorrowed) Color.White else Slate700
                                 )
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val friendName = uiState.selectedFriend?.name
+                    val explanationText = if (uiState.direction == TransactionDirection.LENT) {
+                        if (friendName != null) "$friendName has to return this to you." else "They have to return this to you."
+                    } else {
+                        if (friendName != null) "You have to return this to $friendName." else "You have to return this."
+                    }
+
+                    Text(
+                        text = explanationText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate600,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
                 }
             }
 

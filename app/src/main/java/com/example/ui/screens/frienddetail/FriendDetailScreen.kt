@@ -531,7 +531,7 @@ private fun ActionRow(
         ) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(6.dp))
-            Text("Add Loan", fontWeight = FontWeight.Bold)
+            Text("Add transaction", fontWeight = FontWeight.Bold)
         }
 
         // Bulk settlement action or disabled explanation button
@@ -734,7 +734,7 @@ private fun TimelineTransactionItem(
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
                                     Text(
-                                        text = "Open",
+                                        text = "Pending",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.SemiBold,
                                         color = Slate700
@@ -784,13 +784,13 @@ private fun TimelineTransactionItem(
                             color = Slate600
                         )
                         Text(
-                            text = if (isLent) "Repaid: ${Formatters.formatCurrency(effectivePaid)}" else "Paid: ${Formatters.formatCurrency(effectivePaid)}",
+                            text = if (isLent) "Paid back: ${Formatters.formatCurrency(effectivePaid)}" else "You paid: ${Formatters.formatCurrency(effectivePaid)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (isLent) EmeraldGreenDark else CoralOrangeDark,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Remaining: ${Formatters.formatCurrency(remaining)}",
+                            text = if (isLent) "Still pending: ${Formatters.formatCurrency(remaining)}" else "Still to pay: ${Formatters.formatCurrency(remaining)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = Slate900,
                             fontWeight = FontWeight.Bold
@@ -904,38 +904,36 @@ internal fun IndividualSettlementDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Settle ${Formatters.formatCurrency(remaining)}?",
+                text = "Mark this as fully paid?",
                 fontWeight = FontWeight.Bold,
                 color = Slate900
             )
         },
         text = {
             Column {
+                val bodyText = if (isLent) {
+                    "${Formatters.formatCurrency(remaining)} is still pending from $friendName. This will mark this transaction as settled."
+                } else {
+                    "${Formatters.formatCurrency(remaining)} is still left for you to pay $friendName. This will mark this transaction as settled."
+                }
                 Text(
-                    text = if (isLent) {
-                        "Mark this as settled only if $friendName has paid you back."
-                    } else {
-                        "Mark this as settled only if you've paid $friendName back."
-                    },
+                    text = bodyText,
                     style = MaterialTheme.typography.bodyMedium,
                     color = Slate700
                 )
-                Spacer(modifier = Modifier.height(10.dp))
-                val contextLine = if (isLent) {
-                    "You lent $friendName ${Formatters.formatCurrency(originalAmount)}"
-                } else {
-                    "You borrowed ${Formatters.formatCurrency(originalAmount)} from $friendName"
+                if (hasPartialPayment) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = if (isLent) {
+                            "Original: ${Formatters.formatCurrency(originalAmount)} (${Formatters.formatCurrency(alreadyPaid)} paid back)"
+                        } else {
+                            "Original: ${Formatters.formatCurrency(originalAmount)} (${Formatters.formatCurrency(alreadyPaid)} paid)"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate500,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
-                Text(
-                    text = if (hasPartialPayment) {
-                        "$contextLine (${Formatters.formatCurrency(alreadyPaid)} already paid)"
-                    } else {
-                        contextLine
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate500,
-                    fontWeight = FontWeight.Medium
-                )
             }
         },
         confirmButton = {
@@ -945,7 +943,7 @@ internal fun IndividualSettlementDialog(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.testTag("button_confirm_settle_individual")
             ) {
-                Text("Mark as settled", fontWeight = FontWeight.Bold)
+                Text("Mark as paid", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -954,7 +952,7 @@ internal fun IndividualSettlementDialog(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.testTag("button_cancel_settle_individual")
             ) {
-                Text("Cancel", color = Slate700)
+                Text("Keep pending", color = Slate700)
             }
         },
         containerColor = Color.White,
@@ -1014,9 +1012,9 @@ internal fun RepaymentDialog(
                 if (alreadyPaid > 0) {
                     Text(
                         text = if (isLent) {
-                            "Already repaid: ${Formatters.formatCurrency(alreadyPaid)}"
+                            "Paid back: ${Formatters.formatCurrency(alreadyPaid)}"
                         } else {
-                            "Already paid: ${Formatters.formatCurrency(alreadyPaid)}"
+                            "You paid: ${Formatters.formatCurrency(alreadyPaid)}"
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Slate600
@@ -1025,7 +1023,11 @@ internal fun RepaymentDialog(
                 }
 
                 Text(
-                    text = "Remaining: ${Formatters.formatCurrency(remaining)}",
+                    text = if (isLent) {
+                        "Still pending: ${Formatters.formatCurrency(remaining)}"
+                    } else {
+                        "Still to pay: ${Formatters.formatCurrency(remaining)}"
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = if (isLent) EmeraldGreenDark else CoralOrangeDark
@@ -1150,20 +1152,24 @@ internal fun BulkSettlementDialog(
     onDismiss: () -> Unit
 ) {
     val isLent = eligibility == BulkSettlementEligibility.SAME_DIRECTION_LENT
-    val countString = "$openCount ${if (isLent) "lent" else "borrowed"} transaction${if (openCount == 1) "" else "s"}"
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Settle ${Formatters.formatCurrency(totalRemaining)} with $friendName?",
+                text = "Settle all pending transactions?",
                 fontWeight = FontWeight.Bold,
                 color = Slate900
             )
         },
         text = {
+            val bodyText = if (isLent) {
+                "This will mark all $openCount pending transaction${if (openCount == 1) "" else "s"} (${Formatters.formatCurrency(totalRemaining)}) from $friendName as fully paid."
+            } else {
+                "This will mark all $openCount pending transaction${if (openCount == 1) "" else "s"} (${Formatters.formatCurrency(totalRemaining)}) to $friendName as fully paid."
+            }
             Text(
-                text = "$countString will be marked as settled.",
+                text = bodyText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = Slate700
             )
@@ -1175,7 +1181,7 @@ internal fun BulkSettlementDialog(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.testTag("button_confirm_settle_bulk")
             ) {
-                Text("Mark all as settled", fontWeight = FontWeight.Bold)
+                Text("Mark all as paid", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
@@ -1184,7 +1190,7 @@ internal fun BulkSettlementDialog(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.testTag("button_cancel_settle_bulk")
             ) {
-                Text("Cancel", color = Slate700)
+                Text("Keep pending", color = Slate700)
             }
         },
         containerColor = Color.White,

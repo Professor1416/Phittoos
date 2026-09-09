@@ -523,14 +523,14 @@ fun SettingsScreen(
             onDismissRequest = { showClearDataDialog = false },
             title = {
                 Text(
-                    text = "Clear all Phittoos data?",
+                    text = "Clear all data from this phone?",
                     fontWeight = FontWeight.Bold,
                     color = Slate900
                 )
             },
             text = {
                 Text(
-                    text = "This will permanently delete your friends, transactions, repayment history and activity stored on this device.",
+                    text = "This will permanently delete all your friends, transactions, and payment history from this device. This cannot be undone.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Slate700
                 )
@@ -548,7 +548,7 @@ fun SettingsScreen(
                     ),
                     modifier = Modifier.testTag("dialog_clear_data_confirm")
                 ) {
-                    Text("Clear data")
+                    Text("Clear all data")
                 }
             },
             dismissButton = {
