@@ -134,7 +134,8 @@ fun HomeScreen(
                 TopSummaryCard(
                     youWillGetBack = uiState.youWillGetBack,
                     youOwe = uiState.youOwe,
-                    netPosition = uiState.netPosition
+                    netPosition = uiState.netPosition,
+                    openTransactionsCount = uiState.openTransactionsCount
                 )
             }
 
@@ -316,7 +317,8 @@ private fun HomeHeader(
 private fun TopSummaryCard(
     youWillGetBack: Double,
     youOwe: Double,
-    netPosition: Double
+    netPosition: Double,
+    openTransactionsCount: Int = 0
 ) {
     Card(
         modifier = Modifier
@@ -428,6 +430,7 @@ private fun TopSummaryCard(
                 val netText = when {
                     netPosition > 0 -> "You'll receive ${Formatters.formatCurrency(netPosition)}"
                     netPosition < 0 -> "You need to pay ${Formatters.formatCurrency(kotlin.math.abs(netPosition))}"
+                    openTransactionsCount > 0 -> "Overall balance ₹0"
                     else -> "All settled up (₹0)"
                 }
 
@@ -443,7 +446,8 @@ private fun TopSummaryCard(
                     fontWeight = FontWeight.Bold,
                     color = netColor,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("top_summary_net_text")
                 )
             }
         }

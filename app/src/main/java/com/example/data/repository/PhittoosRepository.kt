@@ -134,15 +134,18 @@ class PhittoosRepository(
     data class DashboardTotals(
         val youWillGetBack: Double,
         val youOwe: Double,
-        val netPosition: Double
+        val netPosition: Double,
+        val openTransactionsCount: Int = 0
     )
 
     val dashboardTotals: Flow<DashboardTotals> = transactionDao.getAllTransactions().map { transactions ->
         var lentTotal = 0.0
         var borrowedTotal = 0.0
+        var openCount = 0
 
         for (tx in transactions) {
             if (tx.status == TransactionStatus.OPEN) {
+                openCount++
                 val effectiveAmount = tx.effectiveRemainingAmount
                 if (tx.direction == TransactionDirection.LENT) {
                     lentTotal += effectiveAmount
@@ -155,7 +158,8 @@ class PhittoosRepository(
         DashboardTotals(
             youWillGetBack = lentTotal,
             youOwe = borrowedTotal,
-            netPosition = lentTotal - borrowedTotal
+            netPosition = lentTotal - borrowedTotal,
+            openTransactionsCount = openCount
         )
     }
 

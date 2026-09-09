@@ -1,8 +1,10 @@
 package com.example
 
 import android.content.Context
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -231,5 +233,172 @@ class ExampleRobolectricTest {
     composeTestRule.onNodeWithText("This will mark all 2 pending transactions (₹800) from Pooja as fully paid.", substring = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("button_confirm_settle_bulk").performClick()
     assertTrue(confirmed)
+  }
+
+  @Test
+  fun `zero net with open transactions displays Overall balance 0 and NOT All settled`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val inMemoryDb = androidx.room.Room.inMemoryDatabaseBuilder(context, com.example.data.db.AppDatabase::class.java)
+      .allowMainThreadQueries()
+      .build()
+    val friendDao = inMemoryDb.friendDao()
+    val transactionDao = inMemoryDb.transactionDao()
+    val repository = com.example.data.repository.PhittoosRepository(friendDao, transactionDao)
+    val prefs = UserPreferences(context)
+    val homeViewModel = com.example.ui.viewmodel.HomeViewModel(repository, prefs)
+
+    kotlinx.coroutines.runBlocking {
+      val friendId = friendDao.insertFriend(com.example.data.model.Friend(name = "Karan"))
+      transactionDao.insertTransaction(
+        com.example.data.model.TransactionEntity(
+          friendId = friendId,
+          amount = 500.0,
+          direction = com.example.data.model.TransactionDirection.LENT,
+          status = com.example.data.model.TransactionStatus.OPEN
+        )
+      )
+      transactionDao.insertTransaction(
+        com.example.data.model.TransactionEntity(
+          friendId = friendId,
+          amount = 500.0,
+          direction = com.example.data.model.TransactionDirection.BORROWED,
+          status = com.example.data.model.TransactionStatus.OPEN
+        )
+      )
+    }
+
+    composeTestRule.setContent {
+      PhittoosTheme {
+        com.example.ui.screens.home.HomeScreen(
+          viewModel = homeViewModel,
+          onNavigateToAddTransaction = {},
+          onNavigateToFriendDetail = {}
+        )
+      }
+    }
+
+    // Must display "Overall balance ₹0" in top summary
+    composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("Overall balance ₹0")
+    // Top summary card MUST NOT contain "All settled"
+    composeTestRule.onAllNodesWithText("All settled up (₹0)").assertCountEquals(0)
+
+    inMemoryDb.close()
+  }
+
+  @Test
+  fun `zero net with no open transactions displays All settled up`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val inMemoryDb = androidx.room.Room.inMemoryDatabaseBuilder(context, com.example.data.db.AppDatabase::class.java)
+      .allowMainThreadQueries()
+      .build()
+    val friendDao = inMemoryDb.friendDao()
+    val transactionDao = inMemoryDb.transactionDao()
+    val repository = com.example.data.repository.PhittoosRepository(friendDao, transactionDao)
+    val prefs = UserPreferences(context)
+    val homeViewModel = com.example.ui.viewmodel.HomeViewModel(repository, prefs)
+
+    kotlinx.coroutines.runBlocking {
+      val friendId = friendDao.insertFriend(com.example.data.model.Friend(name = "Karan"))
+      transactionDao.insertTransaction(
+        com.example.data.model.TransactionEntity(
+          friendId = friendId,
+          amount = 500.0,
+          direction = com.example.data.model.TransactionDirection.LENT,
+          status = com.example.data.model.TransactionStatus.CONFIRMED
+        )
+      )
+    }
+
+    composeTestRule.setContent {
+      PhittoosTheme {
+        com.example.ui.screens.home.HomeScreen(
+          viewModel = homeViewModel,
+          onNavigateToAddTransaction = {},
+          onNavigateToFriendDetail = {}
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("All settled up (₹0)")
+
+    inMemoryDb.close()
+  }
+
+  @Test
+  fun `positive net displays You will receive`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val inMemoryDb = androidx.room.Room.inMemoryDatabaseBuilder(context, com.example.data.db.AppDatabase::class.java)
+      .allowMainThreadQueries()
+      .build()
+    val friendDao = inMemoryDb.friendDao()
+    val transactionDao = inMemoryDb.transactionDao()
+    val repository = com.example.data.repository.PhittoosRepository(friendDao, transactionDao)
+    val prefs = UserPreferences(context)
+    val homeViewModel = com.example.ui.viewmodel.HomeViewModel(repository, prefs)
+
+    kotlinx.coroutines.runBlocking {
+      val friendId = friendDao.insertFriend(com.example.data.model.Friend(name = "Karan"))
+      transactionDao.insertTransaction(
+        com.example.data.model.TransactionEntity(
+          friendId = friendId,
+          amount = 700.0,
+          direction = com.example.data.model.TransactionDirection.LENT,
+          status = com.example.data.model.TransactionStatus.OPEN
+        )
+      )
+    }
+
+    composeTestRule.setContent {
+      PhittoosTheme {
+        com.example.ui.screens.home.HomeScreen(
+          viewModel = homeViewModel,
+          onNavigateToAddTransaction = {},
+          onNavigateToFriendDetail = {}
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("You'll receive ₹700")
+
+    inMemoryDb.close()
+  }
+
+  @Test
+  fun `negative net displays You need to pay`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val inMemoryDb = androidx.room.Room.inMemoryDatabaseBuilder(context, com.example.data.db.AppDatabase::class.java)
+      .allowMainThreadQueries()
+      .build()
+    val friendDao = inMemoryDb.friendDao()
+    val transactionDao = inMemoryDb.transactionDao()
+    val repository = com.example.data.repository.PhittoosRepository(friendDao, transactionDao)
+    val prefs = UserPreferences(context)
+    val homeViewModel = com.example.ui.viewmodel.HomeViewModel(repository, prefs)
+
+    kotlinx.coroutines.runBlocking {
+      val friendId = friendDao.insertFriend(com.example.data.model.Friend(name = "Karan"))
+      transactionDao.insertTransaction(
+        com.example.data.model.TransactionEntity(
+          friendId = friendId,
+          amount = 450.0,
+          direction = com.example.data.model.TransactionDirection.BORROWED,
+          status = com.example.data.model.TransactionStatus.OPEN
+        )
+      )
+    }
+
+    composeTestRule.setContent {
+      PhittoosTheme {
+        com.example.ui.screens.home.HomeScreen(
+          viewModel = homeViewModel,
+          onNavigateToAddTransaction = {},
+          onNavigateToFriendDetail = {}
+        )
+      }
+    }
+
+    composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("You need to pay ₹450")
+
+    inMemoryDb.close()
   }
 }

@@ -22,6 +22,8 @@
     <string name="home_you_will_get_back">You\'ll get back</string>
     <string name="home_you_owe">You owe</string>
     <string name="home_all_settled">All settled</string>
+    <string name="home_overall_balance_zero">Overall balance ₹0</string>
+    <string name="home_all_settled_up_zero">All settled up (₹0)</string>
 
     <!-- Friend Detail Actions & Settlement -->
     <string name="action_add_transaction">Add transaction</string>
