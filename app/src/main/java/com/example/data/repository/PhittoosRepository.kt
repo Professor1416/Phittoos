@@ -225,10 +225,7 @@ class PhittoosRepository(
 
     suspend fun insertFriend(name: String, contactInfo: String? = null): Long {
         val trimmed = name.trim()
-        val existing = friendDao.getFriendByName(trimmed)
-        if (existing != null) {
-            return existing.id
-        }
+        require(trimmed.isNotBlank()) { "Friend name cannot be blank" }
         return friendDao.insertFriend(
             Friend(name = trimmed, contactInfo = contactInfo)
         )

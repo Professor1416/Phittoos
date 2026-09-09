@@ -560,7 +560,8 @@ private fun FriendRowItem(
                         fontWeight = FontWeight.Bold,
                         color = Slate900,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
 
                     Spacer(modifier = Modifier.width(8.dp))

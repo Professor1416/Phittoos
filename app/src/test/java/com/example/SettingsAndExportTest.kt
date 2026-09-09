@@ -582,4 +582,20 @@ class SettingsAndExportTest {
         assertNotNull(version)
         assertTrue(version.isNotBlank())
     }
+
+    // Z. Duplicate friend names get separate distinct IDs (no V2 identity collapsing in V1)
+    @Test
+    fun testZ_duplicateFriendNamesGetDistinctIds() = runTest(testDispatcher) {
+        val id1 = repository.insertFriend("Rahul")
+        val id2 = repository.insertFriend("Rahul")
+        assertTrue(id1 > 0)
+        assertTrue(id2 > 0)
+        assertTrue("Two friends with the same name must have separate IDs", id1 != id2)
+    }
+
+    // AA. Blank friend name is rejected
+    @Test(expected = IllegalArgumentException::class)
+    fun testAA_blankFriendNameRejected() = runTest(testDispatcher) {
+        repository.insertFriend("   ")
+    }
 }

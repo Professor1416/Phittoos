@@ -90,9 +90,13 @@ class SettingsViewModel(
         userPreferences.remindersEnabled = enabled
         _uiState.update { it.copy(remindersEnabled = enabled) }
 
-        if (enabled && context != null) {
-            // Ensure unique periodic work is scheduled (ExistingPeriodicWorkPolicy.KEEP ensures idempotency)
-            SmartReminderScheduler.schedulePeriodicReminderCheck(context)
+        if (context != null) {
+            if (enabled) {
+                // Ensure unique periodic work is scheduled (ExistingPeriodicWorkPolicy.KEEP ensures idempotency)
+                SmartReminderScheduler.schedulePeriodicReminderCheck(context)
+            } else {
+                SmartReminderScheduler.cancelReminderChecks(context)
+            }
         }
     }
 
@@ -117,8 +121,9 @@ class SettingsViewModel(
             repository.clearAllData()
             // 2. Clear user preferences and reset onboarding
             userPreferences.clearAll()
-            // 3. Cancel any outstanding system notifications
+            // 3. Cancel any outstanding system notifications and background workers
             ReminderNotificationHelper.cancelAllNotifications(context)
+            SmartReminderScheduler.cancelReminderChecks(context)
             _uiState.update { it.copy(isClearingData = false, message = "All data cleared") }
             onCleared()
         } catch (e: Exception) {

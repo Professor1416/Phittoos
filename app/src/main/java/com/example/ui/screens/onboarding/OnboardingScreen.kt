@@ -84,6 +84,7 @@ fun OnboardingScreen(
 ) {
     var step by rememberSaveable { mutableIntStateOf(1) }
     var userNameInput by rememberSaveable { mutableStateOf(userPreferences.userName) }
+    var nameError by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun completeAndGoHome() {
         userPreferences.hasCompletedOnboarding = true
@@ -92,8 +93,12 @@ fun OnboardingScreen(
 
     fun proceedFromStep2() {
         val trimmed = userNameInput.trim()
-        val finalName = if (trimmed.isNotEmpty()) trimmed else "You"
-        userPreferences.userName = finalName
+        if (trimmed.isEmpty()) {
+            nameError = "Please enter your name"
+            return
+        }
+        nameError = null
+        userPreferences.userName = trimmed
         step = 3
     }
 
@@ -156,6 +161,7 @@ fun OnboardingScreen(
                     2 -> {
                         Button(
                             onClick = { proceedFromStep2() },
+                            enabled = userNameInput.trim().isNotEmpty(),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = EmeraldGreen,
@@ -236,7 +242,11 @@ fun OnboardingScreen(
                         1 -> OnboardingIntroStep(onTap = { step = 2 })
                         2 -> OnboardingNameStep(
                             name = userNameInput,
-                            onNameChange = { userNameInput = it },
+                            errorMessage = nameError,
+                            onNameChange = {
+                                userNameInput = it
+                                nameError = null
+                            },
                             onDone = { proceedFromStep2() }
                         )
                         3 -> OnboardingPermissionStep()
@@ -316,6 +326,7 @@ private fun OnboardingIntroStep(onTap: () -> Unit) {
 @Composable
 private fun OnboardingNameStep(
     name: String,
+    errorMessage: String? = null,
     onNameChange: (String) -> Unit,
     onDone: () -> Unit
 ) {
@@ -367,6 +378,10 @@ private fun OnboardingNameStep(
             onValueChange = onNameChange,
             placeholder = { Text("Enter your name (e.g. Rahul)", color = Slate400) },
             singleLine = true,
+            isError = errorMessage != null,
+            supportingText = if (errorMessage != null) {
+                { Text(errorMessage, color = MaterialTheme.colorScheme.error) }
+            } else null,
             shape = RoundedCornerShape(16.dp),
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Words,
