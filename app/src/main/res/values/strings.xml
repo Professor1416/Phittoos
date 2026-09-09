@@ -36,6 +36,17 @@
     <string name="mixed_direction_title">Settle individually</string>
     <string name="mixed_direction_body">You have pending transactions in both directions. Settle them individually to keep your records accurate.</string>
 
+    <!-- Settlement & Repayment Feedback Messages -->
+    <string name="msg_marked_as_fully_paid">Marked as fully paid.</string>
+    <string name="msg_selected_transactions_fully_paid">Selected transactions marked as fully paid.</string>
+    <string name="msg_final_repayment_recorded">Final repayment of %s recorded.</string>
+    <string name="msg_repayment_recorded">Repayment of %s recorded.</string>
+    <string name="msg_transaction_already_paid">This transaction is already fully paid.</string>
+    <string name="msg_transaction_no_longer_pending">This transaction is no longer pending.</string>
+    <string name="msg_transaction_not_found">This transaction could not be found.</string>
+    <string name="error_repayment_amount_invalid">Enter an amount greater than ₹0.</string>
+    <string name="error_repayment_exceeds_remaining">Enter %s or less. That’s the amount left to pay.</string>
+
     <!-- Clear Data Dialog -->
     <string name="dialog_clear_data_title">Delete all Phittoos data?</string>
     <string name="dialog_clear_data_body">Your friends, transactions and activity history on this device will be permanently deleted.</string>

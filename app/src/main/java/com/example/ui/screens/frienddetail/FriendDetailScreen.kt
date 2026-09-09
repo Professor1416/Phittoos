@@ -44,6 +44,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import com.example.domain.ReliabilityInfo
+import com.example.R
 import com.example.ui.components.FriendDetailReliabilitySection
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -967,6 +968,7 @@ internal fun RepaymentDialog(
     onConfirm: (Double) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val isLent = tx.direction == TransactionDirection.LENT
     val remaining = tx.effectiveRemainingAmount
     val originalAmount = tx.amount
@@ -1098,20 +1100,17 @@ internal fun RepaymentDialog(
                     if (isSubmitting) return@Button
                     val trimmed = amountInput.trim()
                     if (trimmed.isEmpty()) {
-                        errorMessage = "Please enter an amount"
+                        errorMessage = context.getString(R.string.error_repayment_amount_invalid)
                         return@Button
                     }
                     val amount = trimmed.toDoubleOrNull()
-                    if (amount == null || amount.isNaN() || amount.isInfinite()) {
-                        errorMessage = "Please enter a valid numeric amount"
-                        return@Button
-                    }
-                    if (amount <= 0.0) {
-                        errorMessage = "Amount must be greater than ₹0"
+                    if (amount == null || amount.isNaN() || amount.isInfinite() || amount <= 0.0) {
+                        errorMessage = context.getString(R.string.error_repayment_amount_invalid)
                         return@Button
                     }
                     if (amount > remaining + 0.0001) {
-                        errorMessage = "Amount cannot exceed remaining balance of ${Formatters.formatCurrency(remaining)}"
+                        val formattedRem = Formatters.formatCurrency(remaining)
+                        errorMessage = context.getString(R.string.error_repayment_exceeds_remaining, formattedRem)
                         return@Button
                     }
 

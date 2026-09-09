@@ -24,6 +24,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
+import com.example.ui.util.Formatters
+
+enum class RepaymentErrorReason {
+    INVALID_AMOUNT,
+    TRANSACTION_NOT_FOUND,
+    ALREADY_SETTLED,
+    EXCEEDS_REMAINING,
+    NO_LONGER_OPEN
+}
+
 sealed class RepaymentResult {
     data class Success(
         val updatedTransaction: TransactionEntity,
@@ -31,7 +41,9 @@ sealed class RepaymentResult {
     ) : RepaymentResult()
 
     data class Error(
-        val message: String
+        val message: String,
+        val reason: RepaymentErrorReason = RepaymentErrorReason.INVALID_AMOUNT,
+        val remainingAmount: Double? = null
     ) : RepaymentResult()
 }
 
@@ -279,20 +291,34 @@ class PhittoosRepository(
         settledAt: Long = System.currentTimeMillis()
     ): RepaymentResult {
         if (repaymentAmount <= 0.0 || repaymentAmount.isNaN() || repaymentAmount.isInfinite()) {
-            return RepaymentResult.Error("Repayment amount must be greater than ₹0")
+            return RepaymentResult.Error(
+                message = "Enter an amount greater than ₹0.",
+                reason = RepaymentErrorReason.INVALID_AMOUNT
+            )
         }
 
         return runInTransaction {
             val tx = transactionDao.getTransactionById(transactionId)
-                ?: return@runInTransaction RepaymentResult.Error("Transaction not found")
+                ?: return@runInTransaction RepaymentResult.Error(
+                    message = "This transaction could not be found.",
+                    reason = RepaymentErrorReason.TRANSACTION_NOT_FOUND
+                )
 
             if (tx.status != TransactionStatus.OPEN) {
-                return@runInTransaction RepaymentResult.Error("Transaction is already settled")
+                return@runInTransaction RepaymentResult.Error(
+                    message = "This transaction is already fully paid.",
+                    reason = RepaymentErrorReason.ALREADY_SETTLED
+                )
             }
 
             val remaining = tx.effectiveRemainingAmount
             if (repaymentAmount > remaining + 0.0001) {
-                return@runInTransaction RepaymentResult.Error("Amount exceeds remaining balance of $remaining")
+                val formatted = Formatters.formatCurrency(remaining)
+                return@runInTransaction RepaymentResult.Error(
+                    message = "Enter $formatted or less. That’s the amount left to pay.",
+                    reason = RepaymentErrorReason.EXCEEDS_REMAINING,
+                    remainingAmount = remaining
+                )
             }
 
             val currentEffectivePaid = (tx.paidAmount ?: 0.0).coerceIn(0.0, tx.amount)
@@ -306,7 +332,10 @@ class PhittoosRepository(
 
             val rowsUpdated = transactionDao.updateRepayment(transactionId, finalPaid, finalStatus, settledTimestamp)
             if (rowsUpdated == 0) {
-                return@runInTransaction RepaymentResult.Error("Transaction is no longer open")
+                return@runInTransaction RepaymentResult.Error(
+                    message = "This transaction is no longer pending.",
+                    reason = RepaymentErrorReason.NO_LONGER_OPEN
+                )
             }
 
             // Record activity event

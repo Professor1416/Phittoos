@@ -134,7 +134,7 @@ class FriendDetailViewModel(
                 val tx = repository.getTransactionById(transactionId)
                 if (tx != null && tx.status == TransactionStatus.OPEN) {
                     repository.markTransactionAsPaid(transactionId)
-                    _toastMessage.value = "Transaction marked as settled"
+                    _toastMessage.value = "Marked as fully paid."
                 }
             } finally {
                 _settlingTransactionIds.update { it - transactionId }
@@ -157,20 +157,42 @@ class FriendDetailViewModel(
                     is RepaymentResult.Success -> {
                         val formatted = Formatters.formatCurrency(amount)
                         if (result.isFullySettled) {
-                            _toastMessage.value = "Transaction fully settled! ($formatted)"
+                            _toastMessage.value = "Final repayment of $formatted recorded."
                         } else {
-                            _toastMessage.value = "Recorded repayment of $formatted"
+                            _toastMessage.value = "Repayment of $formatted recorded."
                         }
                         onSuccess?.invoke()
                     }
                     is RepaymentResult.Error -> {
-                        _toastMessage.value = result.message
-                        onError?.invoke(result.message)
+                        val errorMsg = resolveRepaymentErrorMessage(result)
+                        _toastMessage.value = errorMsg
+                        onError?.invoke(errorMsg)
                     }
                 }
             } finally {
                 _settlingTransactionIds.update { it - transactionId }
             }
+        }
+    }
+
+    private fun resolveRepaymentErrorMessage(error: RepaymentResult.Error): String {
+        return when (error.reason) {
+            com.example.data.repository.RepaymentErrorReason.INVALID_AMOUNT ->
+                "Enter an amount greater than ₹0."
+            com.example.data.repository.RepaymentErrorReason.TRANSACTION_NOT_FOUND ->
+                "This transaction could not be found."
+            com.example.data.repository.RepaymentErrorReason.ALREADY_SETTLED ->
+                "This transaction is already fully paid."
+            com.example.data.repository.RepaymentErrorReason.EXCEEDS_REMAINING -> {
+                val remaining = error.remainingAmount
+                if (remaining != null) {
+                    "Enter ${Formatters.formatCurrency(remaining)} or less. That’s the amount left to pay."
+                } else {
+                    error.message
+                }
+            }
+            com.example.data.repository.RepaymentErrorReason.NO_LONGER_OPEN ->
+                "This transaction is no longer pending."
         }
     }
 
@@ -182,7 +204,7 @@ class FriendDetailViewModel(
             try {
                 val success = repository.settleAllSameDirectionForFriend(friendId)
                 if (success) {
-                    _toastMessage.value = "All eligible transactions marked as settled"
+                    _toastMessage.value = "Selected transactions marked as fully paid."
                 }
             } finally {
                 _isBulkSettling.value = false

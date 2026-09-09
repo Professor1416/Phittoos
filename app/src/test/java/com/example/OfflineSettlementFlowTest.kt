@@ -9,6 +9,8 @@ import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
 import com.example.data.model.effectiveRemainingAmount
 import com.example.data.repository.PhittoosRepository
+import com.example.data.repository.RepaymentErrorReason
+import com.example.data.repository.RepaymentResult
 import com.example.ui.viewmodel.BulkSettlementEligibility
 import com.example.ui.viewmodel.FriendDetailViewModel
 import kotlinx.coroutines.Dispatchers
@@ -444,5 +446,101 @@ class OfflineSettlementFlowTest {
         assertNotNull(finalFriend)
         assertEquals(0.0, finalFriend!!.netBalance, 0.001)
         assertEquals(0, finalFriend.openTransactionsCount)
+    }
+
+    /**
+     * TEST K:
+     * Verify plain-language user feedback messages in ViewModel:
+     * - "Marked as fully paid."
+     * - "Selected transactions marked as fully paid."
+     * - "Repayment of ₹X recorded."
+     * - "Final repayment of ₹X recorded."
+     */
+    @Test
+    fun testK_plainLanguageSettlementMessages() = runTest {
+        val friendId = repository.insertFriend("Manoj")
+        val txId = repository.addTransaction(friendId, 500.0, TransactionDirection.LENT, "Loan")
+
+        val vm = FriendDetailViewModel(repository, friendId)
+
+        // 1. Partial repayment
+        vm.recordRepayment(txId, 200.0)
+        testScheduler.advanceUntilIdle()
+        val stateAfterPartial = vm.uiState.first { it.toastMessage != null }
+        assertEquals("Repayment of ₹200 recorded.", stateAfterPartial.toastMessage)
+
+        vm.clearToast()
+
+        // 2. Final repayment completing the transaction
+        vm.recordRepayment(txId, 300.0)
+        testScheduler.advanceUntilIdle()
+        val stateAfterFinal = vm.uiState.first { it.toastMessage != null }
+        assertEquals("Final repayment of ₹300 recorded.", stateAfterFinal.toastMessage)
+
+        vm.clearToast()
+
+        // 3. Single transaction settle
+        val txId2 = repository.addTransaction(friendId, 400.0, TransactionDirection.BORROWED, "Dinner")
+        vm.settleTransaction(txId2)
+        testScheduler.advanceUntilIdle()
+        val stateAfterSingle = vm.uiState.first { it.toastMessage != null }
+        assertEquals("Marked as fully paid.", stateAfterSingle.toastMessage)
+
+        vm.clearToast()
+
+        // 4. Bulk same-direction settle
+        repository.addTransaction(friendId, 100.0, TransactionDirection.LENT, "Snacks 1")
+        repository.addTransaction(friendId, 150.0, TransactionDirection.LENT, "Snacks 2")
+        vm.settleAllSameDirection()
+        testScheduler.advanceUntilIdle()
+        val stateAfterBulk = vm.uiState.first { it.toastMessage != null }
+        assertEquals("Selected transactions marked as fully paid.", stateAfterBulk.toastMessage)
+    }
+
+    /**
+     * TEST L:
+     * Verify plain-language error messages and typed error reasons:
+     * - Invalid repayment amount -> "Enter an amount greater than ₹0."
+     * - Non-existent transaction -> "This transaction could not be found."
+     * - Already settled transaction -> "This transaction is already fully paid."
+     * - Exceeds remaining amount -> "Enter ₹X or less. That’s the amount left to pay."
+     */
+    @Test
+    fun testL_plainLanguageRepaymentErrorMessages() = runTest {
+        val friendId = repository.insertFriend("Sunita")
+        val txId = repository.addTransaction(friendId, 500.0, TransactionDirection.LENT, "Loan")
+
+        // 1. Invalid repayment amount <= 0
+        val resZero = repository.recordRepayment(txId, 0.0)
+        assertTrue(resZero is RepaymentResult.Error)
+        val errZero = resZero as RepaymentResult.Error
+        assertEquals("Enter an amount greater than ₹0.", errZero.message)
+        assertEquals(RepaymentErrorReason.INVALID_AMOUNT, errZero.reason)
+
+        val resNeg = repository.recordRepayment(txId, -50.0)
+        assertTrue(resNeg is RepaymentResult.Error)
+        assertEquals(RepaymentErrorReason.INVALID_AMOUNT, (resNeg as RepaymentResult.Error).reason)
+
+        // 2. Repayment exceeds remaining amount
+        val resExceed = repository.recordRepayment(txId, 600.0)
+        assertTrue(resExceed is RepaymentResult.Error)
+        val errExceed = resExceed as RepaymentResult.Error
+        assertEquals("Enter ₹500 or less. That’s the amount left to pay.", errExceed.message)
+        assertEquals(RepaymentErrorReason.EXCEEDS_REMAINING, errExceed.reason)
+
+        // 3. Non-existent transaction
+        val resNotFound = repository.recordRepayment(99999L, 100.0)
+        assertTrue(resNotFound is RepaymentResult.Error)
+        val errNotFound = resNotFound as RepaymentResult.Error
+        assertEquals("This transaction could not be found.", errNotFound.message)
+        assertEquals(RepaymentErrorReason.TRANSACTION_NOT_FOUND, errNotFound.reason)
+
+        // 4. Already settled transaction
+        repository.markTransactionAsPaid(txId)
+        val resAlreadySettled = repository.recordRepayment(txId, 100.0)
+        assertTrue(resAlreadySettled is RepaymentResult.Error)
+        val errAlreadySettled = resAlreadySettled as RepaymentResult.Error
+        assertEquals("This transaction is already fully paid.", errAlreadySettled.message)
+        assertEquals(RepaymentErrorReason.ALREADY_SETTLED, errAlreadySettled.reason)
     }
 }
