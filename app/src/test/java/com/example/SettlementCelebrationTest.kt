@@ -404,8 +404,10 @@ class SettlementCelebrationTest {
     fun test11_correctResourceWording_toastSuppressionAndDismissal() = runTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
-        assertEquals("Tere mere hisaab… Phittoos!", context.getString(R.string.celebration_headline))
-        assertEquals("All transactions with this friend are settled.", context.getString(R.string.celebration_subtitle))
+        assertEquals("Tere mere hisaab…", context.getString(R.string.celebration_intro))
+        assertEquals("Phittoos!", context.getString(R.string.celebration_headline))
+        assertEquals("Lalit ke saath koi hisaab baaki nahi.", context.getString(R.string.celebration_support_with_name, "Lalit"))
+        assertEquals("Is dost ke saath koi hisaab baaki nahi.", context.getString(R.string.celebration_support_generic))
         assertEquals("Dismiss celebration", context.getString(R.string.celebration_dismiss_cd))
 
         val friendId = repository.insertFriend("Lalit")

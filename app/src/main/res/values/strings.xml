@@ -88,7 +88,12 @@
     <string name="activity_reminder_fallback">Repayment reminder for you</string>
 
     <!-- Settlement Celebration -->
-    <string name="celebration_headline">Tere mere hisaab… Phittoos!</string>
+    <string name="celebration_intro">Tere mere hisaab…</string>
+    <string name="celebration_headline">Phittoos!</string>
+    <string name="celebration_support_with_name">%1$s ke saath koi hisaab baaki nahi.</string>
+    <string name="celebration_support_generic">Is dost ke saath koi hisaab baaki nahi.</string>
     <string name="celebration_subtitle">All transactions with this friend are settled.</string>
     <string name="celebration_dismiss_cd">Dismiss celebration</string>
+    <string name="celebration_accessibility_announcement">Tere mere hisaab… Phittoos! %1$s ke saath koi hisaab baaki nahi.</string>
+    <string name="celebration_accessibility_announcement_generic">Tere mere hisaab… Phittoos! Is dost ke saath koi hisaab baaki nahi.</string>
 </resources>

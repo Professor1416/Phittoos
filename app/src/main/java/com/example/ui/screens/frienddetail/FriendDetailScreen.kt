@@ -287,17 +287,6 @@ fun FriendDetailScreen(
                     }
                 }
 
-                // Settlement Celebration Card (immediately above Transaction Timeline header)
-                uiState.celebrationEvent?.let { celebration ->
-                    item(key = "card_settlement_celebration_item") {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        SettlementCelebrationCard(
-                            event = celebration,
-                            onDismiss = { viewModel.dismissCelebration(celebration.id) }
-                        )
-                    }
-                }
-
                 // Timeline Section Header
                 item {
                     Spacer(modifier = Modifier.height(24.dp))
@@ -410,6 +399,15 @@ fun FriendDetailScreen(
                         showBulkSettlementDialog = false
                     },
                     onDismiss = { showBulkSettlementDialog = false }
+                )
+            }
+
+            // Centered Floating Settlement Celebration Dialog
+            uiState.celebrationEvent?.let { celebration ->
+                SettlementCelebrationDialog(
+                    event = celebration,
+                    friendName = friend.name,
+                    onDismiss = { viewModel.dismissCelebration(celebration.id) }
                 )
             }
         }
