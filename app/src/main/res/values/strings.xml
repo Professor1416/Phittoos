@@ -86,4 +86,9 @@
     <string name="activity_reminder_day_15">Reminder for you · 15 days overdue</string>
     <string name="activity_reminder_day_30">Reminder for you · 30 days overdue</string>
     <string name="activity_reminder_fallback">Repayment reminder for you</string>
+
+    <!-- Settlement Celebration -->
+    <string name="celebration_headline">Tere mere hisaab… Phittoos!</string>
+    <string name="celebration_subtitle">All transactions with this friend are settled.</string>
+    <string name="celebration_dismiss_cd">Dismiss celebration</string>
 </resources>

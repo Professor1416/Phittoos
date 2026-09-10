@@ -34,10 +34,16 @@ enum class RepaymentErrorReason {
     NO_LONGER_OPEN
 }
 
+data class SettlementResult(
+    val success: Boolean,
+    val isAllSettledForFriend: Boolean
+)
+
 sealed class RepaymentResult {
     data class Success(
         val updatedTransaction: TransactionEntity,
-        val isFullySettled: Boolean
+        val isFullySettled: Boolean,
+        val isAllSettledForFriend: Boolean = false
     ) : RepaymentResult()
 
     data class Error(
@@ -366,20 +372,37 @@ class PhittoosRepository(
             }
 
             val updatedTx = tx.copy(paidAmount = finalPaid, status = finalStatus, settledAt = settledTimestamp)
-            RepaymentResult.Success(updatedTx, isFullySettled)
+            val isAllSettled = if (isFullySettled) {
+                val remainingOpenCount = transactionDao.getOpenCountForFriend(tx.friendId)
+                remainingOpenCount == 0
+            } else {
+                false
+            }
+            RepaymentResult.Success(
+                updatedTransaction = updatedTx,
+                isFullySettled = isFullySettled,
+                isAllSettledForFriend = isAllSettled
+            )
         }
     }
 
     suspend fun markTransactionAsPaid(
         transactionId: Long,
         settledAt: Long = System.currentTimeMillis()
-    ) {
-        runInTransaction {
-            val tx = transactionDao.getTransactionById(transactionId) ?: return@runInTransaction
-            if (tx.status != TransactionStatus.OPEN) return@runInTransaction // Idempotent check
+    ): SettlementResult {
+        return runInTransaction {
+            val tx = transactionDao.getTransactionById(transactionId)
+                ?: return@runInTransaction SettlementResult(success = false, isAllSettledForFriend = false)
+            if (tx.status != TransactionStatus.OPEN) {
+                return@runInTransaction SettlementResult(success = false, isAllSettledForFriend = false)
+            }
+
+            val rowsUpdated = transactionDao.markAsConfirmed(transactionId, settledAt)
+            if (rowsUpdated == 0) {
+                return@runInTransaction SettlementResult(success = false, isAllSettledForFriend = false)
+            }
 
             val remaining = tx.effectiveRemainingAmount
-            transactionDao.markAsConfirmed(transactionId, settledAt)
             activityDao?.insertActivity(
                 ActivityEntity(
                     type = ActivityType.SETTLED,
@@ -390,6 +413,12 @@ class PhittoosRepository(
                     note = null,
                     createdAt = settledAt
                 )
+            )
+
+            val remainingOpenCount = transactionDao.getOpenCountForFriend(tx.friendId)
+            SettlementResult(
+                success = true,
+                isAllSettledForFriend = (remainingOpenCount == 0)
             )
         }
     }
@@ -407,7 +436,9 @@ class PhittoosRepository(
                 // Mixed direction safety guard: do NOT bulk-settle when transactions are in both directions
                 return@runInTransaction false
             }
-            transactionDao.markAllOpenForFriendAsConfirmed(friendId, settledAt)
+            val rowsUpdated = transactionDao.markAllOpenForFriendAsConfirmed(friendId, settledAt)
+            if (rowsUpdated == 0) return@runInTransaction false
+
             for (tx in openTxs) {
                 val remaining = tx.effectiveRemainingAmount
                 activityDao?.insertActivity(
@@ -422,7 +453,8 @@ class PhittoosRepository(
                     )
                 )
             }
-            true
+            val remainingOpenCount = transactionDao.getOpenCountForFriend(friendId)
+            remainingOpenCount == 0
         }
     }
 

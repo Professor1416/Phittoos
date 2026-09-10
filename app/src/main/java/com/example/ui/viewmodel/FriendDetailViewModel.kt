@@ -14,6 +14,7 @@ import com.example.data.repository.RepaymentErrorReason
 import com.example.data.repository.RepaymentResult
 import com.example.domain.ReliabilityEngine
 import com.example.domain.ReliabilityInfo
+import com.example.ui.screens.frienddetail.SettlementCelebrationEvent
 import com.example.ui.util.Formatters
 import com.example.ui.util.UiMessage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +40,7 @@ data class FriendDetailUiState(
     val isLoading: Boolean = true,
     val isFriendNotFound: Boolean = false,
     val toastMessage: UiMessage? = null,
+    val celebrationEvent: SettlementCelebrationEvent? = null,
     val bulkSettlementEligibility: BulkSettlementEligibility = BulkSettlementEligibility.NONE,
     val bulkSettlementTotalRemaining: Double = 0.0,
     val bulkSettlementOpenCount: Int = 0,
@@ -47,22 +49,61 @@ data class FriendDetailUiState(
     val reliabilityInfo: ReliabilityInfo = ReliabilityInfo.NEW
 )
 
+private data class OperationState(
+    val toast: UiMessage? = null,
+    val settlingIds: Set<Long> = emptySet(),
+    val isBulkSettling: Boolean = false,
+    val celebration: SettlementCelebrationEvent? = null
+)
+
 class FriendDetailViewModel(
     private val repository: PhittoosRepository,
     private val friendId: Long
 ) : ViewModel() {
 
     private val _toastMessage = MutableStateFlow<UiMessage?>(null)
+    private val _celebrationEvent = MutableStateFlow<SettlementCelebrationEvent?>(null)
     private val _settlingTransactionIds = MutableStateFlow<Set<Long>>(emptySet())
     private val _isBulkSettling = MutableStateFlow(false)
+
+    var isScreenActive: Boolean = false
+        private set
+
+    fun onScreenResumed() {
+        isScreenActive = true
+    }
+
+    fun onScreenPaused() {
+        isScreenActive = false
+        _celebrationEvent.value = null
+    }
+
+    fun dismissCelebration(eventId: Long) {
+        if (_celebrationEvent.value?.id == eventId) {
+            _celebrationEvent.value = null
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        isScreenActive = false
+        _celebrationEvent.value = null
+    }
+
+    private val _operationState = combine(
+        _toastMessage,
+        _settlingTransactionIds,
+        _isBulkSettling,
+        _celebrationEvent
+    ) { toast, settlingIds, isBulkSettling, celebration ->
+        OperationState(toast, settlingIds, isBulkSettling, celebration)
+    }
 
     val uiState: StateFlow<FriendDetailUiState> = combine(
         repository.getFriendById(friendId),
         repository.getTransactionsForFriend(friendId),
-        _toastMessage,
-        _settlingTransactionIds,
-        _isBulkSettling
-    ) { friend, transactions, toast, settlingIds, isBulkSettling ->
+        _operationState
+    ) { friend, transactions, opState ->
         val openTxs = transactions.filter { it.status == TransactionStatus.OPEN }
         val openCount = openTxs.size
 
@@ -115,12 +156,13 @@ class FriendDetailViewModel(
             openTransactionsCount = openCount,
             isLoading = false,
             isFriendNotFound = friend == null,
-            toastMessage = toast,
+            toastMessage = opState.toast,
+            celebrationEvent = opState.celebration,
             bulkSettlementEligibility = eligibility,
             bulkSettlementTotalRemaining = bulkRemaining,
             bulkSettlementOpenCount = bulkCount,
-            settlingTransactionIds = settlingIds,
-            isBulkSettling = isBulkSettling,
+            settlingTransactionIds = opState.settlingIds,
+            isBulkSettling = opState.isBulkSettling,
             reliabilityInfo = reliability
         )
     }.stateIn(
@@ -130,14 +172,18 @@ class FriendDetailViewModel(
     )
 
     fun settleTransaction(transactionId: Long) {
+        if (_isBulkSettling.value) return
         if (_settlingTransactionIds.value.contains(transactionId)) return
         _settlingTransactionIds.update { it + transactionId }
         viewModelScope.launch {
             try {
-                val tx = repository.getTransactionById(transactionId)
-                if (tx != null && tx.status == TransactionStatus.OPEN) {
-                    repository.markTransactionAsPaid(transactionId)
-                    _toastMessage.value = UiMessage(R.string.msg_marked_as_fully_paid)
+                val result = repository.markTransactionAsPaid(transactionId)
+                if (result.success) {
+                    if (result.isAllSettledForFriend && isScreenActive) {
+                        _celebrationEvent.value = SettlementCelebrationEvent()
+                    } else {
+                        _toastMessage.value = UiMessage(R.string.msg_marked_as_fully_paid)
+                    }
                 }
             } finally {
                 _settlingTransactionIds.update { it - transactionId }
@@ -151,6 +197,7 @@ class FriendDetailViewModel(
         onSuccess: (() -> Unit)? = null,
         onError: ((UiMessage) -> Unit)? = null
     ) {
+        if (_isBulkSettling.value) return
         if (_settlingTransactionIds.value.contains(transactionId)) return
         _settlingTransactionIds.update { it + transactionId }
         viewModelScope.launch {
@@ -159,10 +206,14 @@ class FriendDetailViewModel(
                 when (result) {
                     is RepaymentResult.Success -> {
                         val formatted = Formatters.formatCurrency(amount)
-                        if (result.isFullySettled) {
-                            _toastMessage.value = UiMessage(R.string.msg_final_repayment_recorded, formatted)
+                        if (result.isFullySettled && result.isAllSettledForFriend && isScreenActive) {
+                            _celebrationEvent.value = SettlementCelebrationEvent()
                         } else {
-                            _toastMessage.value = UiMessage(R.string.msg_repayment_recorded, formatted)
+                            if (result.isFullySettled) {
+                                _toastMessage.value = UiMessage(R.string.msg_final_repayment_recorded, formatted)
+                            } else {
+                                _toastMessage.value = UiMessage(R.string.msg_repayment_recorded, formatted)
+                            }
                         }
                         onSuccess?.invoke()
                     }
@@ -201,13 +252,18 @@ class FriendDetailViewModel(
 
     fun settleAllSameDirection() {
         if (_isBulkSettling.value) return
+        if (_settlingTransactionIds.value.isNotEmpty()) return
 
         _isBulkSettling.value = true
         viewModelScope.launch {
             try {
                 val success = repository.settleAllSameDirectionForFriend(friendId)
                 if (success) {
-                    _toastMessage.value = UiMessage(R.string.msg_selected_transactions_fully_paid)
+                    if (isScreenActive) {
+                        _celebrationEvent.value = SettlementCelebrationEvent()
+                    } else {
+                        _toastMessage.value = UiMessage(R.string.msg_selected_transactions_fully_paid)
+                    }
                 }
             } finally {
                 _isBulkSettling.value = false

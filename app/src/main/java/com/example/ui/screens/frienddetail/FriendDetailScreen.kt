@@ -69,6 +69,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
@@ -112,6 +113,13 @@ fun FriendDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    LifecycleResumeEffect(viewModel) {
+        viewModel.onScreenResumed()
+        onPauseOrDispose {
+            viewModel.onScreenPaused()
+        }
+    }
 
     var txToSettle by remember { mutableStateOf<TransactionEntity?>(null) }
     var txToRepay by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -276,6 +284,17 @@ fun FriendDetailScreen(
                                 }
                             }
                         }
+                    }
+                }
+
+                // Settlement Celebration Card (immediately above Transaction Timeline header)
+                uiState.celebrationEvent?.let { celebration ->
+                    item(key = "card_settlement_celebration_item") {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SettlementCelebrationCard(
+                            event = celebration,
+                            onDismiss = { viewModel.dismissCelebration(celebration.id) }
+                        )
                     }
                 }
 
