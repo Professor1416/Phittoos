@@ -30,6 +30,24 @@
     <!-- Friend Detail Actions & Settlement -->
     <string name="action_add_transaction">Add transaction</string>
     <string name="action_settle_this">Settle this</string>
+    <string name="action_record_repayment">Record repayment</string>
+    <string name="action_record_payment">Record payment</string>
+    <string name="cd_repay_lent">Record repayment for %1$s lent on %2$s</string>
+    <string name="cd_repay_lent_note">Record repayment for %1$s lent on %2$s, note: %3$s</string>
+    <string name="cd_repay_borrowed">Record payment for %1$s borrowed on %2$s</string>
+    <string name="cd_repay_borrowed_note">Record payment for %1$s borrowed on %2$s, note: %3$s</string>
+    <string name="cd_settle_lent">Settle %1$s lent on %2$s</string>
+    <string name="cd_settle_lent_note">Settle %1$s lent on %2$s, note: %3$s</string>
+    <string name="cd_settle_borrowed">Settle %1$s borrowed on %2$s</string>
+    <string name="cd_settle_borrowed_note">Settle %1$s borrowed on %2$s, note: %3$s</string>
+
+    <string name="dialog_repayment_lent_title">Record Repayment</string>
+    <string name="dialog_repayment_borrowed_title">Record Payment</string>
+    <string name="repayment_amount_label_lent">Repayment amount in rupees</string>
+    <string name="repayment_amount_label_borrowed">Payment amount in rupees</string>
+    <string name="action_fill_remaining">Fill remaining (%s)</string>
+    <string name="action_cancel">Cancel</string>
+
     <string name="dialog_settle_single_title">Mark this as fully paid?</string>
     <string name="dialog_settle_keep_pending">Keep pending</string>
     <string name="dialog_settle_mark_paid">Mark as paid</string>
@@ -37,6 +55,7 @@
     <string name="dialog_settle_bulk_confirm">Mark all as paid</string>
     <string name="mixed_direction_title">Settle individually</string>
     <string name="mixed_direction_body">You have pending transactions in both directions. Settle them individually to keep your records accurate.</string>
+    <string name="mixed_direction_action_state_description">Disabled: You have pending transactions in both directions. Settle them individually.</string>
 
     <!-- Settlement & Repayment Feedback Messages -->
     <string name="msg_marked_as_fully_paid">Marked as fully paid.</string>

@@ -6,9 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -63,6 +68,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -250,7 +260,8 @@ fun FriendDetailScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .testTag("card_mixed_settlement_notice"),
+                                .testTag("card_mixed_settlement_notice")
+                                .semantics(mergeDescendants = true) {},
                             shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(containerColor = Slate100)
                         ) {
@@ -269,14 +280,14 @@ fun FriendDetailScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
                                     Text(
-                                        text = "Settle individually",
+                                        text = stringResource(R.string.mixed_direction_title),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = Slate900
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = "You have unsettled transactions in both directions. Settle them individually to keep your records accurate.",
+                                        text = stringResource(R.string.mixed_direction_body),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Slate700,
                                         lineHeight = 18.sp
@@ -525,7 +536,7 @@ private fun FriendDetailHeader(
 }
 
 @Composable
-private fun ActionRow(
+internal fun ActionRow(
     eligibility: BulkSettlementEligibility,
     onAddTransaction: () -> Unit,
     onRequestBulkSettle: () -> Unit
@@ -554,6 +565,7 @@ private fun ActionRow(
         }
 
         // Bulk settlement action or disabled explanation button
+        val mixedExplanation = stringResource(R.string.mixed_direction_action_state_description)
         OutlinedButton(
             onClick = onRequestBulkSettle,
             enabled = canBulkSettle,
@@ -565,6 +577,11 @@ private fun ActionRow(
             modifier = Modifier
                 .weight(1f)
                 .height(50.dp)
+                .semantics {
+                    if (isMixed) {
+                        stateDescription = mixedExplanation
+                    }
+                }
                 .testTag("button_detail_mark_paid")
         ) {
             Icon(
@@ -583,8 +600,9 @@ private fun ActionRow(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TimelineTransactionItem(
+internal fun TimelineTransactionItem(
     tx: TransactionEntity,
     onSettleClick: () -> Unit,
     onRepayClick: () -> Unit
@@ -821,70 +839,123 @@ private fun TimelineTransactionItem(
             // Due date & Actions: Record Repayment & Settle this
             if (!isConfirmed) {
                 Spacer(modifier = Modifier.height(10.dp))
-                Row(
+                val formattedAmount = Formatters.formatCurrency(tx.amount)
+                val formattedDate = Formatters.formatFullDate(tx.createdDate)
+
+                val repayCd = if (tx.note.isNullOrBlank()) {
+                    stringResource(
+                        if (isLent) R.string.cd_repay_lent else R.string.cd_repay_borrowed,
+                        formattedAmount,
+                        formattedDate
+                    )
+                } else {
+                    stringResource(
+                        if (isLent) R.string.cd_repay_lent_note else R.string.cd_repay_borrowed_note,
+                        formattedAmount,
+                        formattedDate,
+                        tx.note
+                    )
+                }
+
+                val settleCd = if (tx.note.isNullOrBlank()) {
+                    stringResource(
+                        if (isLent) R.string.cd_settle_lent else R.string.cd_settle_borrowed,
+                        formattedAmount,
+                        formattedDate
+                    )
+                } else {
+                    stringResource(
+                        if (isLent) R.string.cd_settle_lent_note else R.string.cd_settle_borrowed_note,
+                        formattedAmount,
+                        formattedDate,
+                        tx.note
+                    )
+                }
+
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    when (dueInfo.state) {
-                        DueState.OVERDUE -> {
-                            Text(
-                                text = dueInfo.formattedStatus,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Red600,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        DueState.DUE_TODAY -> {
-                            Text(
-                                text = "Due today",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Amber700,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                        DueState.UPCOMING -> {
-                            Text(
-                                text = dueInfo.formattedStatus,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Slate600,
-                                fontWeight = FontWeight.Normal
-                            )
-                        }
-                        DueState.NONE -> {
-                            Text(
-                                text = "No due date",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Slate400
-                            )
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterVertically)
+                            .padding(vertical = 4.dp)
+                    ) {
+                        when (dueInfo.state) {
+                            DueState.OVERDUE -> {
+                                Text(
+                                    text = dueInfo.formattedStatus,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Red600,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            DueState.DUE_TODAY -> {
+                                Text(
+                                    text = "Due today",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Amber700,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            DueState.UPCOMING -> {
+                                Text(
+                                    text = dueInfo.formattedStatus,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Slate600,
+                                    fontWeight = FontWeight.Normal
+                                )
+                            }
+                            DueState.NONE -> {
+                                Text(
+                                    text = "No due date",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Slate400
+                                )
+                            }
                         }
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            text = if (isLent) "Record repayment" else "Record payment",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isLent) EmeraldGreenDark else CoralOrangeDark,
+                        TextButton(
+                            onClick = onRepayClick,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                             modifier = Modifier
-                                .clickable(onClick = onRepayClick)
-                                .padding(4.dp)
+                                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                                 .testTag("button_repay_${tx.id}")
-                        )
+                                .semantics {
+                                    contentDescription = repayCd
+                                }
+                        ) {
+                            Text(
+                                text = if (isLent) stringResource(R.string.action_record_repayment) else stringResource(R.string.action_record_payment),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isLent) EmeraldGreenDark else CoralOrangeDark
+                            )
+                        }
 
-                        Text(
-                            text = "Settle this",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Slate600,
+                        TextButton(
+                            onClick = onSettleClick,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                             modifier = Modifier
-                                .clickable(onClick = onSettleClick)
-                                .padding(4.dp)
+                                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                                 .testTag("button_settle_${tx.id}")
-                        )
+                                .semantics {
+                                    contentDescription = settleCd
+                                }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.action_settle_this),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Slate600
+                            )
+                        }
                     }
                 }
             } else if (tx.dueDate != null) {
@@ -923,13 +994,17 @@ internal fun IndividualSettlementDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Mark this as fully paid?",
+                text = stringResource(R.string.dialog_settle_single_title),
                 fontWeight = FontWeight.Bold,
                 color = Slate900
             )
         },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 val bodyText = if (isLent) {
                     "${Formatters.formatCurrency(remaining)} is still pending from $friendName. This will mark this transaction as settled."
                 } else {
@@ -960,18 +1035,22 @@ internal fun IndividualSettlementDialog(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.testTag("button_confirm_settle_individual")
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("button_confirm_settle_individual")
             ) {
-                Text("Mark as paid", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.dialog_settle_mark_paid), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             OutlinedButton(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.testTag("button_cancel_settle_individual")
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("button_cancel_settle_individual")
             ) {
-                Text("Keep pending", color = Slate700)
+                Text(stringResource(R.string.dialog_settle_keep_pending), color = Slate700)
             }
         },
         containerColor = Color.White,
@@ -1007,13 +1086,17 @@ internal fun RepaymentDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (isLent) "Record Repayment" else "Record Payment",
+                text = if (isLent) stringResource(R.string.dialog_repayment_lent_title) else stringResource(R.string.dialog_repayment_borrowed_title),
                 fontWeight = FontWeight.Bold,
                 color = Slate900
             )
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 // Direction context
                 Text(
                     text = if (isLent) {
@@ -1055,7 +1138,12 @@ internal fun RepaymentDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Amount text field
+                // Amount text field with accessible resource-backed label and native error semantics
+                val errorText = errorMessage?.asString(context)
+                val amountLabel = stringResource(
+                    if (isLent) R.string.repayment_amount_label_lent
+                    else R.string.repayment_amount_label_borrowed
+                )
                 OutlinedTextField(
                     value = amountInput,
                     onValueChange = { input ->
@@ -1064,7 +1152,7 @@ internal fun RepaymentDialog(
                             errorMessage = null
                         }
                     },
-                    label = { Text(if (isLent) "Repayment amount" else "Payment amount") },
+                    label = { Text(amountLabel) },
                     placeholder = { Text("Enter amount") },
                     prefix = { Text("₹ ", fontWeight = FontWeight.Bold) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -1081,6 +1169,11 @@ internal fun RepaymentDialog(
                     } else null,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .semantics {
+                            if (errorText != null) {
+                                error(errorText)
+                            }
+                        }
                         .testTag("input_repayment_amount")
                 )
 
@@ -1101,10 +1194,13 @@ internal fun RepaymentDialog(
                             }
                             errorMessage = null
                         },
-                        modifier = Modifier.testTag("button_fill_remaining")
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier
+                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                            .testTag("button_fill_remaining")
                     ) {
                         Text(
-                            text = "Fill remaining (${Formatters.formatCurrency(remaining)})",
+                            text = stringResource(R.string.action_fill_remaining, Formatters.formatCurrency(remaining)),
                             style = MaterialTheme.typography.labelMedium,
                             color = if (isLent) EmeraldGreenDark else CoralOrangeDark
                         )
@@ -1140,7 +1236,9 @@ internal fun RepaymentDialog(
                     containerColor = if (isLent) EmeraldGreen else CoralOrange
                 ),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.testTag("button_confirm_record_repayment")
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("button_confirm_record_repayment")
             ) {
                 Text(ctaText, fontWeight = FontWeight.Bold)
             }
@@ -1149,9 +1247,11 @@ internal fun RepaymentDialog(
             OutlinedButton(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.testTag("button_cancel_record_repayment")
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("button_cancel_record_repayment")
             ) {
-                Text("Cancel", color = Slate700)
+                Text(stringResource(R.string.action_cancel), color = Slate700)
             }
         },
         containerColor = Color.White,
@@ -1174,40 +1274,50 @@ internal fun BulkSettlementDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Settle all pending transactions?",
+                text = stringResource(R.string.dialog_settle_bulk_title),
                 fontWeight = FontWeight.Bold,
                 color = Slate900
             )
         },
         text = {
-            val bodyText = if (isLent) {
-                "This will mark all $openCount pending transaction${if (openCount == 1) "" else "s"} (${Formatters.formatCurrency(totalRemaining)}) from $friendName as fully paid."
-            } else {
-                "This will mark all $openCount pending transaction${if (openCount == 1) "" else "s"} (${Formatters.formatCurrency(totalRemaining)}) to $friendName as fully paid."
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                val bodyText = if (isLent) {
+                    "This will mark all $openCount pending transaction${if (openCount == 1) "" else "s"} (${Formatters.formatCurrency(totalRemaining)}) from $friendName as fully paid."
+                } else {
+                    "This will mark all $openCount pending transaction${if (openCount == 1) "" else "s"} (${Formatters.formatCurrency(totalRemaining)}) to $friendName as fully paid."
+                }
+                Text(
+                    text = bodyText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Slate700
+                )
             }
-            Text(
-                text = bodyText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Slate700
-            )
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.testTag("button_confirm_settle_bulk")
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("button_confirm_settle_bulk")
             ) {
-                Text("Mark all as paid", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.dialog_settle_bulk_confirm), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             OutlinedButton(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.testTag("button_cancel_settle_bulk")
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("button_cancel_settle_bulk")
             ) {
-                Text("Keep pending", color = Slate700)
+                Text(stringResource(R.string.dialog_settle_keep_pending), color = Slate700)
             }
         },
         containerColor = Color.White,
