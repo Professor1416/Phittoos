@@ -10,13 +10,15 @@
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_enter_name_error">Please enter your name</string>
 
-    <!-- Add Transaction Direction -->
+    <!-- Add Transaction Direction & Inputs -->
     <string name="tx_question_what_happened">What happened?</string>
     <string name="tx_direction_i_gave">I gave money</string>
     <string name="tx_direction_i_gave_sub">They have to return it to me</string>
     <string name="tx_direction_i_took">I took money</string>
     <string name="tx_direction_i_took_sub">I have to return it</string>
     <string name="tx_button_add_transaction">Add transaction</string>
+    <string name="tx_amount_label">Amount in rupees</string>
+    <string name="tx_chip_add_amount">Add %d rupees</string>
 
     <!-- Home Balance Context -->
     <string name="home_you_will_get_back">You\'ll get back</string>

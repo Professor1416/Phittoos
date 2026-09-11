@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +25,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -74,6 +77,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -81,6 +89,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.R
 import com.example.data.model.Friend
 import com.example.data.model.TransactionDirection
 import com.example.domain.DueDateHelper
@@ -213,8 +222,9 @@ fun AddTransactionScreen(
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Error Message (if any)
-            if (uiState.errorMessage != null) {
+            // Error Message (if any, excluding field-anchored errors to prevent duplicate speech)
+            val isAmountError = uiState.errorMessage == "Please enter a valid amount"
+            if (uiState.errorMessage != null && !isAmountError) {
                 Surface(
                     color = Color(0xFFFEE2E2),
                     shape = RoundedCornerShape(12.dp),
@@ -445,7 +455,9 @@ fun AddTransactionScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectableGroup(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         // "I gave money" Button
@@ -454,8 +466,12 @@ fun AddTransactionScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (isLent) EmeraldGreen else Slate100)
-                                .clickable { viewModel.setDirection(TransactionDirection.LENT) }
+                                .background(if (isLent) EmeraldGreenDark else Slate100)
+                                .selectable(
+                                    selected = isLent,
+                                    onClick = { viewModel.setDirection(TransactionDirection.LENT) },
+                                    role = Role.RadioButton
+                                )
                                 .padding(vertical = 16.dp, horizontal = 12.dp)
                                 .testTag("toggle_lent"),
                             contentAlignment = Alignment.Center
@@ -472,7 +488,7 @@ fun AddTransactionScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "I gave money",
+                                    text = stringResource(R.string.tx_direction_i_gave),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = if (isLent) Color.White else Slate700
@@ -486,8 +502,12 @@ fun AddTransactionScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (isBorrowed) CoralOrange else Slate100)
-                                .clickable { viewModel.setDirection(TransactionDirection.BORROWED) }
+                                .background(if (isBorrowed) CoralOrangeDark else Slate100)
+                                .selectable(
+                                    selected = isBorrowed,
+                                    onClick = { viewModel.setDirection(TransactionDirection.BORROWED) },
+                                    role = Role.RadioButton
+                                )
                                 .padding(vertical = 16.dp, horizontal = 12.dp)
                                 .testTag("toggle_borrowed"),
                             contentAlignment = Alignment.Center
@@ -504,7 +524,7 @@ fun AddTransactionScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "I took money",
+                                    text = stringResource(R.string.tx_direction_i_took),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = if (isBorrowed) Color.White else Slate700
@@ -525,7 +545,7 @@ fun AddTransactionScreen(
                     Text(
                         text = explanationText,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate600,
+                        color = Slate700,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
@@ -559,7 +579,9 @@ fun AddTransactionScreen(
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (uiState.direction == TransactionDirection.LENT) EmeraldGreenDark else CoralOrangeDark,
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .clearAndSetSemantics { }
                         )
 
                         OutlinedTextField(
@@ -569,7 +591,18 @@ fun AddTransactionScreen(
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester)
                                 .testTag("input_amount"),
+                            label = { Text(stringResource(R.string.tx_amount_label)) },
                             placeholder = { Text("0", fontSize = 32.sp, color = Slate400) },
+                            isError = isAmountError,
+                            supportingText = if (isAmountError) {
+                                {
+                                    Text(
+                                        text = uiState.errorMessage ?: "",
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.testTag("text_amount_error")
+                                    )
+                                }
+                            } else null,
                             textStyle = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Slate900,
@@ -584,42 +617,55 @@ fun AddTransactionScreen(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = Slate900,
                                 unfocusedTextColor = Slate900,
-                                cursorColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreen else CoralOrange,
-                                focusedBorderColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreen else CoralOrange,
+                                cursorColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreenDark else CoralOrangeDark,
+                                focusedBorderColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreenDark else CoralOrangeDark,
                                 unfocusedBorderColor = Slate200,
                                 focusedContainerColor = Color.White,
                                 unfocusedContainerColor = Color.White,
                                 focusedPlaceholderColor = Slate400,
-                                unfocusedPlaceholderColor = Slate400
+                                unfocusedPlaceholderColor = Slate400,
+                                focusedLabelColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreenDark else CoralOrangeDark,
+                                errorBorderColor = MaterialTheme.colorScheme.error,
+                                errorLabelColor = MaterialTheme.colorScheme.error
                             )
                         )
                     }
 
-                    // Fast Quick-amount chips (+100, +200, +500, +1000, +2000)
+                    // Fast Quick-amount chips (+100, +200, +500, +1000, +2000, +5000)
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         listOf(100, 200, 500, 1000, 2000, 5000).forEach { quickAmt ->
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Slate100,
-                                modifier = Modifier.clickable {
+                                onClick = {
                                     val current = uiState.amount.toDoubleOrNull() ?: 0.0
                                     val next = current + quickAmt
                                     viewModel.setAmount(next.toInt().toString())
-                                }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = Slate100,
+                                modifier = Modifier
+                                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                    .testTag("chip_amount_$quickAmt")
                             ) {
-                                Text(
-                                    text = "+₹$quickAmt",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Slate700,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "+₹$quickAmt",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Slate700
+                                    )
+                                }
                             }
                         }
                     }

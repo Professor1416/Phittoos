@@ -276,6 +276,7 @@ class ExampleRobolectricTest {
         )
       }
     }
+    composeTestRule.waitForIdle()
 
     // Must display "Overall balance ₹0" in top summary
     composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("Overall balance ₹0")
