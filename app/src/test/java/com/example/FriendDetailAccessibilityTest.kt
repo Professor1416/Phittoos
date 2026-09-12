@@ -12,8 +12,12 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
 import com.example.data.model.TransactionDirection
 import com.example.data.model.TransactionEntity
@@ -36,7 +40,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36], qualifiers = "w400dp-h1000dp")
+@Config(sdk = [36])
 class FriendDetailAccessibilityTest {
 
     @get:Rule
@@ -152,7 +156,6 @@ class FriendDetailAccessibilityTest {
         var confirmedAmount: Double? = null
         var dismissed = false
 
-        composeTestRule.mainClock.autoAdvance = false
         composeTestRule.setContent {
             PhittoosTheme {
                 RepaymentDialog(
@@ -163,7 +166,6 @@ class FriendDetailAccessibilityTest {
                 )
             }
         }
-        composeTestRule.mainClock.advanceTimeByFrame()
 
         // 1. Label identifying repayment amount in rupees
         composeTestRule.onNodeWithText("Repayment amount in rupees").assertExists()
@@ -171,7 +173,6 @@ class FriendDetailAccessibilityTest {
         // 2. Amount field allows text input (editable text semantics)
         val amountInput = composeTestRule.onNodeWithTag("input_repayment_amount")
         amountInput.performTextInput("150")
-        composeTestRule.mainClock.advanceTimeByFrame()
         composeTestRule.onNodeWithText("Record ₹150").assertExists()
 
         // 3. Fill remaining button touch target & functionality
@@ -179,20 +180,18 @@ class FriendDetailAccessibilityTest {
         fillBtn.assertHeightIsAtLeast(48.dp)
         fillBtn.assertWidthIsAtLeast(48.dp)
         fillBtn.performClick()
-        composeTestRule.mainClock.advanceTimeByFrame()
 
         // Remaining balance is 800 (1000 - 200)
         composeTestRule.onNodeWithText("Record ₹800").assertExists()
 
         // 4. Exceeding remaining amount triggers error semantics on the input
-        amountInput.performTextInput("9999")
-        composeTestRule.mainClock.advanceTimeByFrame()
+        amountInput.performTextReplacement("9999")
         composeTestRule.onNodeWithTag("button_confirm_record_repayment").performClick()
-        composeTestRule.mainClock.advanceTimeByFrame()
+        composeTestRule.waitForIdle()
 
         // Native error semantics on the input field
         amountInput.assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
-        composeTestRule.onNodeWithTag("text_repayment_error").assertExists()
+        composeTestRule.onNodeWithTag("text_repayment_error", useUnmergedTree = true).assertExists()
         assertEquals("Should not confirm when error present", null, confirmedAmount)
     }
 
@@ -224,7 +223,6 @@ class FriendDetailAccessibilityTest {
         var repayDismissed = false
         val tx = createSampleTransaction(amount = 500.0)
 
-        composeTestRule.mainClock.autoAdvance = false
         composeTestRule.setContent {
             PhittoosTheme {
                 RepaymentDialog(
@@ -235,14 +233,12 @@ class FriendDetailAccessibilityTest {
                 )
             }
         }
-        composeTestRule.mainClock.advanceTimeByFrame()
 
         // Cancel button has touch target and does not confirm
         val cancelBtn = composeTestRule.onNodeWithTag("button_cancel_record_repayment")
         cancelBtn.assertHeightIsAtLeast(48.dp)
         cancelBtn.assertWidthIsAtLeast(48.dp)
         cancelBtn.performClick()
-        composeTestRule.mainClock.advanceTimeByFrame()
 
         assertTrue(repayDismissed)
         assertFalse(repayConfirmed)

@@ -25,7 +25,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [36])
+@Config(sdk = [36], qualifiers = "w360dp-h1000dp-xhdpi")
 class ExampleRobolectricTest {
 
   @get:Rule val composeTestRule = createComposeRule()

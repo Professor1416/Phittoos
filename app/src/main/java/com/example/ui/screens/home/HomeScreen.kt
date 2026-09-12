@@ -80,12 +80,14 @@ import com.example.ui.theme.Slate100
 import com.example.ui.theme.Slate200
 import com.example.ui.theme.Slate400
 import com.example.ui.theme.Slate500
+import com.example.ui.theme.Slate600
 import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate800
 import com.example.ui.theme.Slate900
 import com.example.ui.util.Formatters
 import com.example.ui.viewmodel.HomeUiState
 import com.example.ui.viewmodel.HomeViewModel
+import androidx.compose.ui.semantics.semantics
 
 @Composable
 fun HomeScreen(
@@ -163,7 +165,7 @@ fun HomeScreen(
                         text = "FRIENDS (${uiState.friends.size})",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Slate500,
+                        color = Slate600,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
                 }
@@ -187,7 +189,7 @@ fun HomeScreen(
                         text = "RECENT ACTIVITY",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Slate500,
+                        color = Slate600,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
                 }
@@ -242,7 +244,7 @@ private fun HomeHeader(
             Text(
                 text = "Tera Mera Hisaab Phittoos",
                 style = MaterialTheme.typography.bodySmall,
-                color = Slate500,
+                color = Slate600,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -314,6 +316,49 @@ private fun HomeHeader(
 }
 
 @Composable
+private fun SummaryBox(
+    title: String,
+    amount: Double,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tintColor: Color,
+    backgroundColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(backgroundColor)
+            .semantics(mergeDescendants = true) {}
+            .padding(16.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tintColor,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = tintColor
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = Formatters.formatCurrency(amount),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = tintColor
+            )
+        }
+    }
+}
+
+@Composable
 private fun TopSummaryCard(
     youWillGetBack: Double,
     youOwe: Double,
@@ -329,103 +374,62 @@ private fun TopSummaryCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(20.dp)
+        androidx.compose.foundation.layout.BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Two numbers side by side
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            val isNarrow = maxWidth < 340.dp
+            Column(
+                modifier = Modifier.padding(20.dp)
             ) {
-                // You'll get back (Green)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(EmeraldGreenSurface)
-                        .padding(16.dp)
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                                contentDescription = null,
-                                tint = EmeraldGreenDark,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "You'll get back",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = EmeraldGreenDark
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = Formatters.formatCurrency(youWillGetBack),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = EmeraldGreenDark,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                if (isNarrow) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        SummaryBox(
+                            title = "You'll get back",
+                            amount = youWillGetBack,
+                            icon = Icons.AutoMirrored.Filled.TrendingUp,
+                            tintColor = EmeraldGreenDark,
+                            backgroundColor = EmeraldGreenSurface,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        SummaryBox(
+                            title = "You owe",
+                            amount = youOwe,
+                            icon = Icons.AutoMirrored.Filled.TrendingDown,
+                            tintColor = CoralOrangeDark,
+                            backgroundColor = CoralOrangeSurface,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        SummaryBox(
+                            title = "You'll get back",
+                            amount = youWillGetBack,
+                            icon = Icons.AutoMirrored.Filled.TrendingUp,
+                            tintColor = EmeraldGreenDark,
+                            backgroundColor = EmeraldGreenSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        SummaryBox(
+                            title = "You owe",
+                            amount = youOwe,
+                            icon = Icons.AutoMirrored.Filled.TrendingDown,
+                            tintColor = CoralOrangeDark,
+                            backgroundColor = CoralOrangeSurface,
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
 
-                // You owe (Orange/Red)
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(CoralOrangeSurface)
-                        .padding(16.dp)
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingDown,
-                                contentDescription = null,
-                                tint = CoralOrangeDark,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "You owe",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = CoralOrangeDark
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = Formatters.formatCurrency(youOwe),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = CoralOrangeDark,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Slate200.copy(alpha = 0.6f))
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Net position line underneath
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Overall",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Slate500,
-                    fontWeight = FontWeight.Medium
-                )
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(color = Slate200.copy(alpha = 0.6f))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 val netText = when {
                     netPosition > 0 -> "You'll receive ${Formatters.formatCurrency(netPosition)}"
@@ -440,15 +444,46 @@ private fun TopSummaryCard(
                     else -> Slate700
                 }
 
-                Text(
-                    text = netText,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = netColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.testTag("top_summary_net_text")
-                )
+                if (isNarrow) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Overall",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Slate600,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = netText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = netColor,
+                            modifier = Modifier.testTag("top_summary_net_text")
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Overall",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Slate600,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = netText,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = netColor,
+                            modifier = Modifier.testTag("top_summary_net_text")
+                        )
+                    }
+                }
             }
         }
     }
@@ -526,140 +561,219 @@ private fun SearchAndFilterBar(
 }
 
 @Composable
+private fun FriendBalanceColumn(
+    friendWithBalance: FriendWithBalance,
+    horizontalAlignment: Alignment.Horizontal
+) {
+    val net = friendWithBalance.netBalance
+    Column(
+        horizontalAlignment = horizontalAlignment
+    ) {
+        when {
+            net > 0 -> {
+                Text(
+                    text = "owes you",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Slate600,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = Formatters.formatCurrency(net),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = EmeraldGreenDark
+                )
+            }
+            net < 0 -> {
+                Text(
+                    text = "you owe",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Slate600,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = Formatters.formatCurrency(kotlin.math.abs(net)),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = CoralOrangeDark
+                )
+            }
+            friendWithBalance.openTransactionsCount > 0 -> {
+                Text(
+                    text = "Net ₹0",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Slate700
+                )
+            }
+            else -> {
+                Text(
+                    text = "All settled",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Slate600
+                )
+            }
+        }
+
+        if (friendWithBalance.overdueTransactionsCount > 0) {
+            Text(
+                text = "${friendWithBalance.overdueTransactionsCount} overdue",
+                style = MaterialTheme.typography.labelSmall,
+                color = CoralOrangeDark,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
 private fun FriendRowItem(
     friendWithBalance: FriendWithBalance,
     onClick: () -> Unit
 ) {
-    val net = friendWithBalance.netBalance
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 5.dp)
             .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {}
             .testTag("friend_row_${friendWithBalance.friend.id}"),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        androidx.compose.foundation.layout.BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            AvatarInitial(
-                name = friendWithBalance.friend.name,
-                size = 48.dp
-            )
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
+            val isNarrow = maxWidth < 340.dp
+            
+            if (isNarrow) {
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = friendWithBalance.friend.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Slate900,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                    AvatarInitial(
+                        name = friendWithBalance.friend.name,
+                        size = 48.dp
                     )
 
-                    if (friendWithBalance.reliabilityInfo.level != ReliabilityLevel.NEW) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        ReliabilityPill(level = friendWithBalance.reliabilityInfo.level)
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = friendWithBalance.friend.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Slate900,
+                            )
+
+                            if (friendWithBalance.reliabilityInfo.level != ReliabilityLevel.NEW) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                ReliabilityPill(level = friendWithBalance.reliabilityInfo.level)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(3.dp))
+
+                        Text(
+                            text = if (friendWithBalance.lastActivityDate != null) {
+                                "Activity: ${Formatters.formatDate(friendWithBalance.lastActivityDate)}"
+                            } else {
+                                "No transactions yet"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        FriendBalanceColumn(
+                            friendWithBalance = friendWithBalance,
+                            horizontalAlignment = Alignment.Start
+                        )
                     }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Slate200,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AvatarInitial(
+                        name = friendWithBalance.friend.name,
+                        size = 48.dp
+                    )
 
-                Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
 
-                Text(
-                    text = if (friendWithBalance.lastActivityDate != null) {
-                        "Activity: ${Formatters.formatDate(friendWithBalance.lastActivityDate)}"
-                    } else {
-                        "No transactions yet"
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
-                )
-            }
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = friendWithBalance.friend.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Slate900,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
 
-            Spacer(modifier = Modifier.width(10.dp))
+                            if (friendWithBalance.reliabilityInfo.level != ReliabilityLevel.NEW) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                ReliabilityPill(level = friendWithBalance.reliabilityInfo.level)
+                            }
+                        }
 
-            // Balance text
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                when {
-                    net > 0 -> {
+                        Spacer(modifier = Modifier.height(3.dp))
+
                         Text(
-                            text = "owes you",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Slate500,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = Formatters.formatCurrency(net),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = EmeraldGreenDark
+                            text = if (friendWithBalance.lastActivityDate != null) {
+                                "Activity: ${Formatters.formatDate(friendWithBalance.lastActivityDate)}"
+                            } else {
+                                "No transactions yet"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate600
                         )
                     }
-                    net < 0 -> {
-                        Text(
-                            text = "you owe",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Slate500,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = Formatters.formatCurrency(kotlin.math.abs(net)),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = CoralOrangeDark
-                        )
-                    }
-                    friendWithBalance.openTransactionsCount > 0 -> {
-                        Text(
-                            text = "Net ₹0",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Slate700
-                        )
-                    }
-                    else -> {
-                        Text(
-                            text = "All settled",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Slate500
-                        )
-                    }
-                }
 
-                if (friendWithBalance.overdueTransactionsCount > 0) {
-                    Text(
-                        text = "${friendWithBalance.overdueTransactionsCount} overdue",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CoralOrangeDark,
-                        fontWeight = FontWeight.SemiBold
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    FriendBalanceColumn(
+                        friendWithBalance = friendWithBalance,
+                        horizontalAlignment = Alignment.End
+                    )
+
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Slate200,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
-                tint = Slate200,
-                modifier = Modifier.size(16.dp)
-            )
         }
     }
 }
@@ -716,7 +830,7 @@ private fun EmptyFriendsState(
             Text(
                 text = "Track informal loans and borrowings cleanly with one tap.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Slate500,
+                color = Slate600,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 
@@ -749,6 +863,7 @@ private fun RecentActivityRow(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {}
             .testTag("recent_activity_row_${tx.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -790,7 +905,7 @@ private fun RecentActivityRow(
                     Text(
                         text = tx.note,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate500,
+                        color = Slate600,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -798,7 +913,7 @@ private fun RecentActivityRow(
                 Text(
                     text = Formatters.formatDate(tx.createdDate),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Slate400
+                    color = Slate600
                 )
             }
 
@@ -816,7 +931,7 @@ private fun RecentActivityRow(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.CheckCircle,
-                            contentDescription = "Settled",
+                            contentDescription = null,
                             tint = EmeraldGreen,
                             modifier = Modifier.size(12.dp)
                         )
@@ -832,7 +947,7 @@ private fun RecentActivityRow(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.HourglassTop,
-                            contentDescription = "Open",
+                            contentDescription = null,
                             tint = Slate400,
                             modifier = Modifier.size(12.dp)
                         )
@@ -840,7 +955,7 @@ private fun RecentActivityRow(
                         Text(
                             text = "Open",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Slate500
+                            color = Slate600
                         )
                     }
                 }

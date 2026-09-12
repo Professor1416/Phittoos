@@ -1158,15 +1158,15 @@ internal fun RepaymentDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     isError = errorMessage != null,
-                    supportingText = if (errorMessage != null) {
-                        {
+                    supportingText = {
+                        if (errorMessage != null) {
                             Text(
                                 text = errorMessage!!.asString(context),
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.testTag("text_repayment_error")
                             )
                         }
-                    } else null,
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics {
