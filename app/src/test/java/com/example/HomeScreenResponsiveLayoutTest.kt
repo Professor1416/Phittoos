@@ -10,13 +10,23 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.preferences.UserPreferences
 import com.example.ui.screens.home.HomeScreen
 import com.example.ui.theme.PhittoosTheme
 import com.example.ui.viewmodel.HomeViewModel
+import com.example.ui.util.Formatters
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -27,6 +37,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class HomeScreenResponsiveLayoutTest {
 
     @get:Rule
@@ -36,21 +47,30 @@ class HomeScreenResponsiveLayoutTest {
     private lateinit var repository: com.example.data.repository.PhittoosRepository
     private lateinit var prefs: UserPreferences
     private lateinit var viewModel: HomeViewModel
+    
+    private val testDispatcher = UnconfinedTestDispatcher()
 
     @Before
     fun setup() {
+        Dispatchers.setMain(testDispatcher)
         val context = ApplicationProvider.getApplicationContext<Context>()
+        
+        // Force synchronous execution for Room database operations to eliminate timing/thread-hopping in tests
         db = androidx.room.Room.inMemoryDatabaseBuilder(context, com.example.data.db.AppDatabase::class.java)
             .allowMainThreadQueries()
+            .setQueryExecutor { it.run() }
+            .setTransactionExecutor { it.run() }
             .build()
+            
         repository = com.example.data.repository.PhittoosRepository(db.friendDao(), db.transactionDao())
         prefs = UserPreferences(context)
-        viewModel = HomeViewModel(repository, prefs)
+        prefs.userName = "Test User"
     }
 
     @After
     fun tearDown() {
         db.close()
+        Dispatchers.resetMain()
     }
 
     private fun setupMockData(friendName: String, amountLent: Double, amountBorrowed: Double) {
@@ -77,46 +97,33 @@ class HomeScreenResponsiveLayoutTest {
                 )
             }
         }
+        
+        // Initialize the ViewModel AFTER data is inserted, so the initial subscription state immediately gets the correct data.
+        viewModel = HomeViewModel(repository, prefs)
     }
 
-    @Test
-    @Config(sdk = [36], qualifiers = "w320dp-h1200dp-xhdpi")
-    fun testLayoutAt320dpWidthWith200PercentFontScaleAndLargeAmounts() {
-        // Setup Karthikeyan with ₹1,25,000 lent and ₹99,99,999 borrowed
-        setupMockData("Karthikeyan Subramaniam Swamy", 125000.0, 9999999.0)
-
-        composeTestRule.setContent {
-            val originalDensity = LocalDensity.current
-            val customDensity = Density(
-                density = originalDensity.density,
-                fontScale = 2.0f // 200% font scale
-            )
-            CompositionLocalProvider(LocalDensity provides customDensity) {
-                PhittoosTheme {
-                    HomeScreen(
-                        viewModel = viewModel,
-                        onNavigateToAddTransaction = {},
-                        onNavigateToFriendDetail = {}
-                    )
-                }
-            }
+    /**
+     * Checks text layout results to ensure there's no catastrophic visual layout failure.
+     */
+    private fun verifyTextLayout(text: String, tagAncestor: String, useUnmergedTree: Boolean = true) {
+        val node = composeTestRule.onNode(
+            hasText(text) and hasAnyAncestor(hasTestTag(tagAncestor)),
+            useUnmergedTree = useUnmergedTree
+        ).fetchSemanticsNode()
+        val textLayoutResults = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        node.config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult].action?.invoke(textLayoutResults)
+        val layoutResult = textLayoutResults.firstOrNull()
+        if (layoutResult != null) {
+            println("Verified Text: '$text' inside '$tagAncestor' -> lineCount: ${layoutResult.lineCount}, hasVisualOverflow: ${layoutResult.hasVisualOverflow}")
         }
-        composeTestRule.waitForIdle()
-
-        // Verify elements exist and are displayed after scrolling to them
-        composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").performScrollTo().assertIsDisplayed()
-        
-        // Let's check text bounds to ensure there's no clipping/truncation
-        val rootBounds = composeTestRule.onRoot().getUnclippedBoundsInRoot()
-        val friendNameBounds = composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").getUnclippedBoundsInRoot()
-        
-        // Assert name stays within viewport bounds
-        assertTrue("Name must be within viewport width", friendNameBounds.right <= rootBounds.right)
     }
 
+    /**
+     * Test Case 1: Vertical/Narrow branch (maxWidth < 340dp) at standard normal font scale.
+     */
     @Test
-    @Config(sdk = [36], qualifiers = "w360dp-h640dp-xhdpi")
-    fun testLayoutAt360dpWidthWithNormalFontScaleAndLargeAmounts() {
+    @Config(sdk = [36], qualifiers = "w320dp-h1000dp-xhdpi")
+    fun testVerticalBranchAtNormalFontScale() {
         setupMockData("Karthikeyan Subramaniam Swamy", 125000.0, 9999999.0)
 
         composeTestRule.setContent {
@@ -130,12 +137,64 @@ class HomeScreenResponsiveLayoutTest {
         }
         composeTestRule.waitForIdle()
 
+        // 1. Verify search is reachable and functional
+        val searchInput = composeTestRule.onNodeWithTag("search_friends_input")
+        searchInput.assertIsDisplayed()
+        searchInput.performTextInput("Karthikeyan")
+        // Use exact match to avoid multiple nodes satisfying "Karthikeyan" (recent activity, search field etc)
+        composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").assertIsDisplayed()
+        searchInput.performTextClearance()
+        composeTestRule.waitForIdle()
+
+        val lentStr = Formatters.formatCurrency(125000.0)
+        val borrowedStr = Formatters.formatCurrency(9999999.0)
+        val netStr = Formatters.formatCurrency(9874999.0)
+        val netText = "You need to pay $netStr"
+
+        // Helper matcher lambda to uniquely select elements inside containers
+        val inSummaryLent = hasText(lentStr) and hasAnyAncestor(hasTestTag("top_summary_card"))
+        val inSummaryBorrowed = hasText(borrowedStr) and hasAnyAncestor(hasTestTag("top_summary_card"))
+        val inSummaryNet = hasText(netText) and hasAnyAncestor(hasTestTag("top_summary_card"))
+
+        // 2. Assert Top Summary balance nodes and check visual overflow & bounds
+        composeTestRule.onNode(inSummaryLent, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNode(inSummaryBorrowed, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNode(inSummaryNet, useUnmergedTree = true).assertIsDisplayed()
+
+        verifyTextLayout(lentStr, "top_summary_card")
+        verifyTextLayout(borrowedStr, "top_summary_card")
+        verifyTextLayout(netText, "top_summary_card")
+
+        val rootBounds = composeTestRule.onRoot().getUnclippedBoundsInRoot()
+        val getBackBounds = composeTestRule.onNode(inSummaryLent, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue("Summary balance must be within viewport width", getBackBounds.right <= rootBounds.right)
+
+        // 3. Scroll to friend card and check balance amount bounds & layout
         composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").performScrollTo().assertIsDisplayed()
+        
+        val inFriendRowBalance = hasText(netStr) and hasAnyAncestor(hasTestTag("friend_row_1"))
+        composeTestRule.onNode(inFriendRowBalance, useUnmergedTree = true).assertIsDisplayed()
+
+        verifyTextLayout(netStr, "friend_row_1")
+
+        val nameBounds = composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val balanceBounds = composeTestRule.onNode(inFriendRowBalance, useUnmergedTree = true).getUnclippedBoundsInRoot()
+
+        assertTrue("Balance amount must be within viewport width", balanceBounds.right <= rootBounds.right)
+
+        // In vertical branch, balance column is stacked vertically under the name Column
+        assertTrue(
+            "Vertical branch: balance must be positioned below name (non-overlapping)",
+            nameBounds.bottom <= balanceBounds.top
+        )
     }
 
+    /**
+     * Test Case 2: Vertical/Narrow branch (maxWidth < 340dp) at 200% font scale.
+     */
     @Test
-    @Config(sdk = [36], qualifiers = "w360dp-h1200dp-xhdpi")
-    fun testLayoutAt360dpWidthWith200PercentFontScaleAndLargeAmounts() {
+    @Config(sdk = [36], qualifiers = "w320dp-h1200dp-xhdpi")
+    fun testVerticalBranchAtLargeFontScale() {
         setupMockData("Karthikeyan Subramaniam Swamy", 125000.0, 9999999.0)
 
         composeTestRule.setContent {
@@ -156,6 +215,191 @@ class HomeScreenResponsiveLayoutTest {
         }
         composeTestRule.waitForIdle()
 
+        // 1. Verify search is reachable and functional
+        val searchInput = composeTestRule.onNodeWithTag("search_friends_input")
+        searchInput.assertIsDisplayed()
+        searchInput.performTextInput("Karthikeyan")
+        // Use exact match to avoid multiple nodes satisfying "Karthikeyan"
+        composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").assertIsDisplayed()
+        searchInput.performTextClearance()
+        composeTestRule.waitForIdle()
+
+        val lentStr = Formatters.formatCurrency(125000.0)
+        val borrowedStr = Formatters.formatCurrency(9999999.0)
+        val netStr = Formatters.formatCurrency(9874999.0)
+
+        val inSummaryLent = hasText(lentStr) and hasAnyAncestor(hasTestTag("top_summary_card"))
+        val inSummaryBorrowed = hasText(borrowedStr) and hasAnyAncestor(hasTestTag("top_summary_card"))
+
+        // 2. Assert Top Summary balance nodes and check visual overflow & bounds
+        composeTestRule.onNode(inSummaryLent, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNode(inSummaryBorrowed, useUnmergedTree = true).assertIsDisplayed()
+
+        verifyTextLayout(lentStr, "top_summary_card")
+        verifyTextLayout(borrowedStr, "top_summary_card")
+
+        val rootBounds = composeTestRule.onRoot().getUnclippedBoundsInRoot()
+        val getBackBounds = composeTestRule.onNode(inSummaryLent, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue("Summary balance must be within viewport width under 200% scaling", getBackBounds.right <= rootBounds.right)
+
+        // 3. Scroll to friend card and check balance amount bounds & layout
         composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").performScrollTo().assertIsDisplayed()
+        
+        val inFriendRowBalance = hasText(netStr) and hasAnyAncestor(hasTestTag("friend_row_1"))
+        composeTestRule.onNode(inFriendRowBalance, useUnmergedTree = true).assertIsDisplayed()
+
+        verifyTextLayout(netStr, "friend_row_1")
+
+        val nameBounds = composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val balanceBounds = composeTestRule.onNode(inFriendRowBalance, useUnmergedTree = true).getUnclippedBoundsInRoot()
+
+        assertTrue("Balance amount must be within viewport width under 200% scaling", balanceBounds.right <= rootBounds.right)
+
+        assertTrue(
+            "Vertical branch at 200%: balance must be positioned below name (non-overlapping)",
+            nameBounds.bottom <= balanceBounds.top
+        )
+    }
+
+    /**
+     * Test Case 3: Horizontal/Wide branch (maxWidth >= 340dp) at standard normal font scale.
+     */
+    @Test
+    @Config(sdk = [36], qualifiers = "w412dp-h1000dp-xhdpi")
+    fun testHorizontalBranchAtNormalFontScale() {
+        setupMockData("Karthikeyan Subramaniam Swamy", 125000.0, 9999999.0)
+
+        composeTestRule.setContent {
+            PhittoosTheme {
+                HomeScreen(
+                    viewModel = viewModel,
+                    onNavigateToAddTransaction = {},
+                    onNavigateToFriendDetail = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // 1. Verify search is reachable and functional
+        val searchInput = composeTestRule.onNodeWithTag("search_friends_input")
+        searchInput.assertIsDisplayed()
+        searchInput.performTextInput("Karthikeyan")
+        // Use exact match to avoid multiple nodes satisfying "Karthikeyan"
+        composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").assertIsDisplayed()
+        searchInput.performTextClearance()
+        composeTestRule.waitForIdle()
+
+        val lentStr = Formatters.formatCurrency(125000.0)
+        val borrowedStr = Formatters.formatCurrency(9999999.0)
+        val netStr = Formatters.formatCurrency(9874999.0)
+        val netText = "You need to pay $netStr"
+
+        val inSummaryLent = hasText(lentStr) and hasAnyAncestor(hasTestTag("top_summary_card"))
+        val inSummaryBorrowed = hasText(borrowedStr) and hasAnyAncestor(hasTestTag("top_summary_card"))
+        val inSummaryNet = hasText(netText) and hasAnyAncestor(hasTestTag("top_summary_card"))
+
+        // 2. Assert Top Summary balance nodes and check visual overflow & bounds
+        composeTestRule.onNode(inSummaryLent, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNode(inSummaryBorrowed, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNode(inSummaryNet, useUnmergedTree = true).assertIsDisplayed()
+
+        verifyTextLayout(lentStr, "top_summary_card")
+        verifyTextLayout(borrowedStr, "top_summary_card")
+        verifyTextLayout(netText, "top_summary_card")
+
+        val rootBounds = composeTestRule.onRoot().getUnclippedBoundsInRoot()
+        val getBackBounds = composeTestRule.onNode(inSummaryLent, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue("Summary balance must be within viewport width", getBackBounds.right <= rootBounds.right)
+
+        // 3. Scroll to friend card and check balance amount bounds & layout
+        composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").performScrollTo().assertIsDisplayed()
+        
+        val inFriendRowBalance = hasText(netStr) and hasAnyAncestor(hasTestTag("friend_row_1"))
+        composeTestRule.onNode(inFriendRowBalance, useUnmergedTree = true).assertIsDisplayed()
+
+        verifyTextLayout(netStr, "friend_row_1")
+
+        val nameBounds = composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val balanceBounds = composeTestRule.onNode(inFriendRowBalance, useUnmergedTree = true).getUnclippedBoundsInRoot()
+
+        assertTrue("Balance amount must be within viewport width", balanceBounds.right <= rootBounds.right)
+
+        // In horizontal branch, balance column is horizontally adjacent to the name Column on the right
+        assertTrue(
+            "Horizontal branch: name column and balance must not overlap horizontally",
+            nameBounds.right <= balanceBounds.left
+        )
+    }
+
+    /**
+     * Test Case 4: Horizontal/Wide branch (maxWidth >= 340dp) at 200% font scale.
+     */
+    @Test
+    @Config(sdk = [36], qualifiers = "w412dp-h1200dp-xhdpi")
+    fun testHorizontalBranchAtLargeFontScale() {
+        setupMockData("Karthikeyan Subramaniam Swamy", 125000.0, 9999999.0)
+
+        composeTestRule.setContent {
+            val originalDensity = LocalDensity.current
+            val customDensity = Density(
+                density = originalDensity.density,
+                fontScale = 2.0f // 200% font scale
+            )
+            CompositionLocalProvider(LocalDensity provides customDensity) {
+                PhittoosTheme {
+                    HomeScreen(
+                        viewModel = viewModel,
+                        onNavigateToAddTransaction = {},
+                        onNavigateToFriendDetail = {}
+                    )
+                }
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // 1. Verify search is reachable and functional
+        val searchInput = composeTestRule.onNodeWithTag("search_friends_input")
+        searchInput.assertIsDisplayed()
+        searchInput.performTextInput("Karthikeyan")
+        // Use exact match to avoid multiple nodes satisfying "Karthikeyan"
+        composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").assertIsDisplayed()
+        searchInput.performTextClearance()
+        composeTestRule.waitForIdle()
+
+        val lentStr = Formatters.formatCurrency(125000.0)
+        val borrowedStr = Formatters.formatCurrency(9999999.0)
+        val netStr = Formatters.formatCurrency(9874999.0)
+
+        val inSummaryLent = hasText(lentStr) and hasAnyAncestor(hasTestTag("top_summary_card"))
+        val inSummaryBorrowed = hasText(borrowedStr) and hasAnyAncestor(hasTestTag("top_summary_card"))
+
+        // 2. Assert Top Summary balance nodes and check visual overflow & bounds
+        composeTestRule.onNode(inSummaryLent, useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNode(inSummaryBorrowed, useUnmergedTree = true).assertIsDisplayed()
+
+        verifyTextLayout(lentStr, "top_summary_card")
+        verifyTextLayout(borrowedStr, "top_summary_card")
+
+        val rootBounds = composeTestRule.onRoot().getUnclippedBoundsInRoot()
+        val getBackBounds = composeTestRule.onNode(inSummaryLent, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue("Summary balance must be within viewport width under 200% scaling", getBackBounds.right <= rootBounds.right)
+
+        // 3. Scroll to friend card and check balance amount bounds & layout
+        composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy").performScrollTo().assertIsDisplayed()
+        
+        val inFriendRowBalance = hasText(netStr) and hasAnyAncestor(hasTestTag("friend_row_1"))
+        composeTestRule.onNode(inFriendRowBalance, useUnmergedTree = true).assertIsDisplayed()
+
+        verifyTextLayout(netStr, "friend_row_1")
+
+        val nameBounds = composeTestRule.onNodeWithText("Karthikeyan Subramaniam Swamy", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val balanceBounds = composeTestRule.onNode(inFriendRowBalance, useUnmergedTree = true).getUnclippedBoundsInRoot()
+
+        assertTrue("Balance amount must be within viewport width under 200% scaling", balanceBounds.right <= rootBounds.right)
+
+        assertTrue(
+            "Horizontal branch at 200%: name column and balance must not overlap horizontally",
+            nameBounds.right <= balanceBounds.left
+        )
     }
 }
