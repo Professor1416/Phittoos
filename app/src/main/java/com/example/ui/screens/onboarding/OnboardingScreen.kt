@@ -57,6 +57,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -73,6 +75,7 @@ import com.example.ui.theme.Slate100
 import com.example.ui.theme.Slate200
 import com.example.ui.theme.Slate400
 import com.example.ui.theme.Slate500
+import com.example.ui.theme.Slate600
 import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate900
 
@@ -106,12 +109,21 @@ fun OnboardingScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val progressDesc = context.getString(
+                com.example.R.string.onboarding_progress_announcement,
+                step,
+                2
+            )
             // Step Progress Indicator at top: 2 steps in Offline V1
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(top = 16.dp, bottom = 8.dp),
+                    .padding(top = 16.dp, bottom = 8.dp)
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = progressDesc
+                    },
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -164,7 +176,7 @@ fun OnboardingScreen(
                             enabled = userNameInput.trim().isNotEmpty(),
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = EmeraldGreen,
+                                containerColor = EmeraldGreenDark,
                                 contentColor = Color.White
                             ),
                             modifier = Modifier
@@ -205,7 +217,7 @@ fun OnboardingScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     when (currentStep) {
-                        1 -> OnboardingIntroStep(onTap = { step = 2 })
+                        1 -> OnboardingIntroStep()
                         2 -> OnboardingNameStep(
                             name = userNameInput,
                             errorMessage = nameError,
@@ -223,15 +235,10 @@ fun OnboardingScreen(
 }
 
 @Composable
-private fun OnboardingIntroStep(onTap: () -> Unit) {
+private fun OnboardingIntroStep() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onTap
-            )
             .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -295,6 +302,7 @@ private fun OnboardingNameStep(
     onNameChange: (String) -> Unit,
     onDone: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -341,6 +349,7 @@ private fun OnboardingNameStep(
         OutlinedTextField(
             value = name,
             onValueChange = onNameChange,
+            label = { Text(context.getString(com.example.R.string.onboarding_name_label)) },
             placeholder = { Text("Enter your name (e.g. Rahul)", color = Slate400) },
             singleLine = true,
             isError = errorMessage != null,
@@ -362,11 +371,19 @@ private fun OnboardingNameStep(
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
                 focusedPlaceholderColor = Slate400,
-                unfocusedPlaceholderColor = Slate400
+                unfocusedPlaceholderColor = Slate400,
+                focusedLabelColor = EmeraldGreenDark,
+                unfocusedLabelColor = Slate500,
+                errorLabelColor = MaterialTheme.colorScheme.error
             ),
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("input_user_name")
+                .semantics {
+                    if (errorMessage != null) {
+                        error(errorMessage)
+                    }
+                }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -374,7 +391,7 @@ private fun OnboardingNameStep(
         Text(
             text = "No account or password needed. 100% offline & private.",
             style = MaterialTheme.typography.labelSmall,
-            color = Slate400
+            color = Slate600
         )
     }
 }

@@ -117,4 +117,8 @@
     <string name="celebration_dismiss_cd">Dismiss celebration</string>
     <string name="celebration_accessibility_announcement">Tere mere hisaab… Phittoos! %1$s ke saath koi hisaab baaki nahi.</string>
     <string name="celebration_accessibility_announcement_generic">Tere mere hisaab… Phittoos! Is dost ke saath koi hisaab baaki nahi.</string>
+
+    <!-- Onboarding Accessibility -->
+    <string name="onboarding_name_label">Your name</string>
+    <string name="onboarding_progress_announcement">Step %1$d of %2$d</string>
 </resources>
