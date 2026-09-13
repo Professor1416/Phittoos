@@ -4,31 +4,31 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Top Arc (Lent / Outflow - Emerald Green #10B981) -->
+    <!-- Top Arc (Solid White for Monochrome Tinting) -->
     <path
-        android:strokeColor="#10B981"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="4"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
         android:pathData="M37,44 A20,20 0 0,1 71,44" />
     <!-- Top Arrow Head -->
     <path
-        android:fillColor="#10B981"
+        android:fillColor="#FFFFFF"
         android:pathData="M70,40 L76,45 L70,50 Z" />
 
-    <!-- Bottom Arc (Borrowed / Repaid - Coral Orange #F97316) -->
+    <!-- Bottom Arc (Solid White for Monochrome Tinting) -->
     <path
-        android:strokeColor="#F97316"
+        android:strokeColor="#FFFFFF"
         android:strokeWidth="4"
         android:strokeLineCap="round"
         android:fillColor="#00000000"
         android:pathData="M71,64 A20,20 0 0,1 37,64" />
     <!-- Bottom Arrow Head -->
     <path
-        android:fillColor="#F97316"
+        android:fillColor="#FFFFFF"
         android:pathData="M38,68 L32,63 L38,58 Z" />
 
-    <!-- Indian Rupee Symbol (₹) - White & Optically Centered -->
+    <!-- Indian Rupee Symbol (₹) -->
     <!-- Top horizontal bar -->
     <path
         android:fillColor="#FFFFFF"
