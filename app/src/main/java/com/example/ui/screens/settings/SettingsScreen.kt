@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +62,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,7 +71,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.export.PhittoosCsvExporter
 import com.example.ui.theme.CoralOrange
+import com.example.ui.theme.CoralOrangeDark
 import com.example.ui.theme.EmeraldGreen
+import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.Slate200
 import com.example.ui.theme.Slate400
 import com.example.ui.theme.Slate500
@@ -216,9 +221,7 @@ fun SettingsScreen(
                                     text = uiState.profileName.ifBlank { "Not set" },
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Slate900,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    color = Slate900
                                 )
                             }
                         }
@@ -233,7 +236,7 @@ fun SettingsScreen(
                             Text(
                                 text = "Edit",
                                 fontWeight = FontWeight.SemiBold,
-                                color = EmeraldGreen
+                                color = EmeraldGreenDark
                             )
                         }
                     }
@@ -252,7 +255,15 @@ fun SettingsScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .toggleable(
+                                    value = uiState.remindersEnabled,
+                                    role = Role.Switch,
+                                    onValueChange = { enabled ->
+                                        viewModel.toggleReminders(enabled, context)
+                                    }
+                                )
+                                .padding(16.dp)
+                                .testTag("row_repayment_reminders"),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -283,14 +294,14 @@ fun SettingsScreen(
                             }
                             Switch(
                                 checked = uiState.remindersEnabled,
-                                onCheckedChange = { enabled ->
-                                    viewModel.toggleReminders(enabled, context)
-                                },
+                                onCheckedChange = null,
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = Color.White,
                                     checkedTrackColor = EmeraldGreen
                                 ),
-                                modifier = Modifier.testTag("switch_repayment_reminders")
+                                modifier = Modifier
+                                    .testTag("switch_repayment_reminders")
+                                    .clearAndSetSemantics { }
                             )
                         }
 
@@ -305,14 +316,14 @@ fun SettingsScreen(
                                 Icon(
                                     imageVector = Icons.Default.Warning,
                                     contentDescription = null,
-                                    tint = CoralOrange,
+                                    tint = CoralOrangeDark,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Notifications are disabled in Android settings.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = CoralOrange,
+                                    color = CoralOrangeDark,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -463,7 +474,10 @@ fun SettingsScreen(
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     OutlinedTextField(
                         value = editNameInput,
                         onValueChange = {
@@ -529,11 +543,15 @@ fun SettingsScreen(
                 )
             },
             text = {
-                Text(
-                    text = "This will permanently delete all your friends, transactions, and payment history from this device. This cannot be undone.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Slate700
-                )
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = "This will permanently delete all your friends, transactions, and payment history from this device. This cannot be undone.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Slate700
+                    )
+                }
             },
             confirmButton = {
                 Button(
