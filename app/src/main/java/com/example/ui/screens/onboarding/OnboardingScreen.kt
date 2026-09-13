@@ -246,21 +246,20 @@ private fun OnboardingIntroStep() {
             modifier = Modifier
                 .size(96.dp)
                 .clip(CircleShape)
-                .background(EmeraldGreenSurface),
+                .background(Color(0xFF0F172A)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Handshake,
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_launcher_foreground),
                 contentDescription = null,
-                tint = EmeraldGreenDark,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(96.dp)
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Phittoos",
+            text = androidx.compose.ui.res.stringResource(id = com.example.R.string.app_name),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Black,
             color = Slate900,
@@ -273,7 +272,7 @@ private fun OnboardingIntroStep() {
             modifier = Modifier.padding(top = 8.dp)
         ) {
             Text(
-                text = "Tera Mera Hisaab Phittoos",
+                text = androidx.compose.ui.res.stringResource(id = com.example.R.string.tagline),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = Slate700,

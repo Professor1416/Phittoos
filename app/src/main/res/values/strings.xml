@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Phittoos</string>
-    <string name="tagline">Tera Mera Hisaab Phittoos</string>
+    <string name="tagline">Tere mere hisaab… Phittoos!</string>
     <string name="app_description">Track money between you and your friends. No bank linking. No group setup.</string>
 
     <!-- Onboarding -->

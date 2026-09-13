@@ -233,21 +233,23 @@ private fun HomeHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Phittoos",
+                text = androidx.compose.ui.res.stringResource(id = com.example.R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Black,
                 color = Slate900,
                 letterSpacing = (-0.5).sp
             )
             Text(
-                text = "Tera Mera Hisaab Phittoos",
+                text = androidx.compose.ui.res.stringResource(id = com.example.R.string.tagline),
                 style = MaterialTheme.typography.bodySmall,
                 color = Slate600,
                 fontWeight = FontWeight.Medium
             )
         }
+
+        Spacer(modifier = Modifier.width(16.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,

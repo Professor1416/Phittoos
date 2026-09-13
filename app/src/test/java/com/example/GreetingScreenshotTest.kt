@@ -24,7 +24,7 @@ class GreetingScreenshotTest {
   fun greeting_screenshot() {
     composeTestRule.setContent {
       PhittoosTheme {
-        Text("Tera Mera Hisaab Phittoos")
+        Text("Tere mere hisaab… Phittoos!")
       }
     }
 

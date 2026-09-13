@@ -58,9 +58,9 @@ Retrieved directly from the approved corrected candidate (`logo_preview/logo_com
    - **Fill Color**: `#FFFFFF`
 
 ### Design Metric Boundaries
-* **Emblem Extents**: Horizontal: $X=32$ to $X=76$ (total width `44dp`), Vertical: $Y=24$ to $Y=84$ (total height `60dp`), which contains the full vertical extent of the top and bottom arcs.
+* **Emblem Extents**: Horizontal: $X=32$ to $X=76$ (total width `44dp`).
 * **Symmetry**: Perfect horizontal alignment across $Y=54$ (vertical center). Arcs sit precisely `10dp` above and below the center line (at $Y=44$ and $Y=64$).
-* **Measured Radius & Clipping Considerations**: The maximum radial distance from the center $(54, 54)$ to the outermost arc peak at $(54, 24)$ or $(54, 84)$ is exactly `30dp`. Since `30dp` is very close to the standard Android launcher **`33dp` Safe Zone Circle** (the inner $66\text{dp}$ safe boundary), there is no universal zero-clipping guarantee on all aggressive custom system masks (such as tight squircle or high-scaling square shapes). Outer arc caps may undergo minor clipping depending on the operating system’s adaptive mask configuration.
+* **Measured Radius & Clipping Considerations**: Adaptive mask boundary clipping and safe-zone verification is pending visual/physical device checks in Task 17G.
 
 ---
 
