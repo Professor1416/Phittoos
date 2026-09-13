@@ -58,8 +58,8 @@
         }
         .grid-comparison {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
             margin-bottom: 40px;
         }
         .card {
@@ -270,11 +270,11 @@
             </ul>
         </div>
 
-        <!-- Card 2: Refined Candidate -->
+        <!-- Card 2: Previous Refined Candidate -->
         <div class="card">
-            <h3>2. Refined Candidate</h3>
+            <h3>2. Previous Refined (R-stem issue)</h3>
             <div class="canvas-container" style="background-color: #0F172A;">
-                <!-- SVG translation of refined logo candidate -->
+                <!-- SVG translation of previous refined logo candidate -->
                 <svg viewBox="0 0 108 108">
                     <!-- Clean solid background -->
                     <rect width="108" height="108" fill="#0F172A" />
@@ -293,8 +293,36 @@
             <ul class="features-list">
                 <li><strong>No decorative glows</strong>, background rings, or gradients.</li>
                 <li><strong>Strict vertical alignment</strong>: Arcs set perfectly at $Y=44$ and $Y=64$.</li>
-                <li><strong>Optimized Arrowheads</strong>: Rebuilt with strict coordinates centered at $Y=45$ and $Y=63$.</li>
-                <li>Solid `#0F172A` background enhances overall color density and brand weight.</li>
+                <li><strong>R-resembling stem</strong>: Extra left vertical stem extends down to $Y=62.5$.</li>
+                <li>Solid `#0F172A` background.</li>
+            </ul>
+        </div>
+
+        <!-- Card 3: Corrected Refined Candidate -->
+        <div class="card">
+            <h3>3. Corrected Candidate (True ₹)</h3>
+            <div class="canvas-container" style="background-color: #0F172A;">
+                <!-- SVG translation of corrected logo candidate -->
+                <svg viewBox="0 0 108 108">
+                    <!-- Clean solid background -->
+                    <rect width="108" height="108" fill="#0F172A" />
+                    <!-- Top Arc & Arrow (Optimized symmetry) -->
+                    <path d="M37,44 A20,20 0 0,1 71,44" fill="none" stroke="#10B981" stroke-width="4" stroke-linecap="round" />
+                    <path d="M70,40 L76,45 L70,50 Z" fill="#10B981" />
+                    <!-- Bottom Arc & Arrow (Strict symmetry) -->
+                    <path d="M71,64 A20,20 0 0,1 37,64" fill="none" stroke="#F97316" stroke-width="4" stroke-linecap="round" />
+                    <path d="M38,68 L32,63 L38,58 Z" fill="#F97316" />
+                    <!-- Rupee Symbol with Correct Geometry -->
+                    <path d="M46.5,45.5 L61.5,45.5 L61.5,47.5 L46.5,47.5 Z" fill="#FFFFFF" />
+                    <path d="M46.5,49.5 L60.5,49.5 L60.5,51.5 L46.5,51.5 Z" fill="#FFFFFF" />
+                    <path d="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L48.5,54.5 L48.5,45.5 Z" fill="#FFFFFF" />
+                </svg>
+            </div>
+            <ul class="features-list">
+                <li><strong>Corrected Rupee Geometry</strong>: Removed the unwanted left vertical extension below the loop intersection.</li>
+                <li><strong>Crisp diagonal leg</strong>: Extends directly from loop/stem junction for a classic, unmistakable **`₹`** symbol.</li>
+                <li><strong>True vector-level edit</strong>: Native pathing corrected without masking background patches.</li>
+                <li><strong>Balanced scale & padding</strong>: Perfectly centered and proportioned.</li>
             </ul>
         </div>
     </div>
@@ -302,8 +330,9 @@
     <!-- SCALABILITY BOX -->
     <div class="section-title">Small-Scale Readability Test</div>
     <div class="scalability-box">
+        <!-- 48px sizes -->
         <div class="scale-item">
-            <span class="scale-label">Existing Logo (48px)</span>
+            <span class="scale-label">Baseline Logo (48px)</span>
             <div class="scale-render p48">
                 <svg viewBox="0 0 108 108">
                     <rect width="108" height="108" fill="url(#existing-bg)" />
@@ -321,7 +350,7 @@
             </div>
         </div>
         <div class="scale-item">
-            <span class="scale-label">Refined Candidate (48px)</span>
+            <span class="scale-label">Previous Refined (48px)</span>
             <div class="scale-render p48">
                 <svg viewBox="0 0 108 108">
                     <rect width="108" height="108" fill="#0F172A" />
@@ -336,7 +365,24 @@
             </div>
         </div>
         <div class="scale-item">
-            <span class="scale-label">Existing Logo (32px)</span>
+            <span class="scale-label">Corrected Refined (48px)</span>
+            <div class="scale-render p48">
+                <svg viewBox="0 0 108 108">
+                    <rect width="108" height="108" fill="#0F172A" />
+                    <path d="M37,44 A20,20 0 0,1 71,44" fill="none" stroke="#10B981" stroke-width="4" stroke-linecap="round" />
+                    <path d="M70,40 L76,45 L70,50 Z" fill="#10B981" />
+                    <path d="M71,64 A20,20 0 0,1 37,64" fill="none" stroke="#F97316" stroke-width="4" stroke-linecap="round" />
+                    <path d="M38,68 L32,63 L38,58 Z" fill="#F97316" />
+                    <path d="M46.5,45.5 L61.5,45.5 L61.5,47.5 L46.5,47.5 Z" fill="#FFFFFF" />
+                    <path d="M46.5,49.5 L60.5,49.5 L60.5,51.5 L46.5,51.5 Z" fill="#FFFFFF" />
+                    <path d="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L48.5,54.5 L48.5,45.5 Z" fill="#FFFFFF" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- 32px sizes -->
+        <div class="scale-item">
+            <span class="scale-label">Baseline Logo (32px)</span>
             <div class="scale-render p32">
                 <svg viewBox="0 0 108 108">
                     <rect width="108" height="108" fill="url(#existing-bg)" />
@@ -354,7 +400,7 @@
             </div>
         </div>
         <div class="scale-item">
-            <span class="scale-label">Refined Candidate (32px)</span>
+            <span class="scale-label">Previous Refined (32px)</span>
             <div class="scale-render p32">
                 <svg viewBox="0 0 108 108">
                     <rect width="108" height="108" fill="#0F172A" />
@@ -365,13 +411,28 @@
                     <path d="M46.5,45.5 L61.5,45.5 L61.5,47.5 L46.5,47.5 Z" fill="#FFFFFF" />
                     <path d="M46.5,49.5 L60.5,49.5 L60.5,51.5 L46.5,51.5 Z" fill="#FFFFFF" />
                     <path d="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L50.5,56.8 L50.5,62.5 L48.5,62.5 L48.5,45.5 Z" fill="#FFFFFF" />
+                </svg>
+            </div>
+        </div>
+        <div class="scale-item">
+            <span class="scale-label">Corrected Refined (32px)</span>
+            <div class="scale-render p32">
+                <svg viewBox="0 0 108 108">
+                    <rect width="108" height="108" fill="#0F172A" />
+                    <path d="M37,44 A20,20 0 0,1 71,44" fill="none" stroke="#10B981" stroke-width="4" stroke-linecap="round" />
+                    <path d="M70,40 L76,45 L70,50 Z" fill="#10B981" />
+                    <path d="M71,64 A20,20 0 0,1 37,64" fill="none" stroke="#F97316" stroke-width="4" stroke-linecap="round" />
+                    <path d="M38,68 L32,63 L38,58 Z" fill="#F97316" />
+                    <path d="M46.5,45.5 L61.5,45.5 L61.5,47.5 L46.5,47.5 Z" fill="#FFFFFF" />
+                    <path d="M46.5,49.5 L60.5,49.5 L60.5,51.5 L46.5,51.5 Z" fill="#FFFFFF" />
+                    <path d="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L48.5,54.5 L48.5,45.5 Z" fill="#FFFFFF" />
                 </svg>
             </div>
         </div>
     </div>
 
     <!-- ADAPTIVE MASKING PREVIEWS -->
-    <div class="section-title">Adaptive Mask Previews (Refined Candidate)</div>
+    <div class="section-title">Adaptive Mask Previews (Corrected Refined Candidate)</div>
     <div class="mask-grid">
         <div class="mask-card">
             <span class="scale-label">Circular Mask (TalkBack / Default OS)</span>
@@ -384,7 +445,7 @@
                     <path d="M38,68 L32,63 L38,58 Z" fill="#F97316" />
                     <path d="M46.5,45.5 L61.5,45.5 L61.5,47.5 L46.5,47.5 Z" fill="#FFFFFF" />
                     <path d="M46.5,49.5 L60.5,49.5 L60.5,51.5 L46.5,51.5 Z" fill="#FFFFFF" />
-                    <path d="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L50.5,56.8 L50.5,62.5 L48.5,62.5 L48.5,45.5 Z" fill="#FFFFFF" />
+                    <path d="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L48.5,54.5 L48.5,45.5 Z" fill="#FFFFFF" />
                 </svg>
             </div>
         </div>
@@ -399,7 +460,7 @@
                     <path d="M38,68 L32,63 L38,58 Z" fill="#F97316" />
                     <path d="M46.5,45.5 L61.5,45.5 L61.5,47.5 L46.5,47.5 Z" fill="#FFFFFF" />
                     <path d="M46.5,49.5 L60.5,49.5 L60.5,51.5 L46.5,51.5 Z" fill="#FFFFFF" />
-                    <path d="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L50.5,56.8 L50.5,62.5 L48.5,62.5 L48.5,45.5 Z" fill="#FFFFFF" />
+                    <path d="M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L48.5,54.5 L48.5,45.5 Z" fill="#FFFFFF" />
                 </svg>
             </div>
         </div>
@@ -409,10 +470,10 @@
     <div class="audit-box">
         <h4>Visual Checklist & Discussion Points for Design Review</h4>
         <ul class="audit-list">
-            <li><strong>Rupee Shape Readability (₹)</strong>: The double horizontal bar and upper curve sit comfortably in a $15\text{dp}$ wide canvas, providing excellent contrast and geometric sharpness against the solid dark slate background. At $32\text{px}$, the space between horizontal bars is $2\text{dp}$, remaining distinct on modern high-DPI smartphone layouts.</li>
-            <li><strong>Arrowhead Connection Integrity</strong>: The arrowheads are cleanly joined to their respective arcs. The bottom arrowhead coordinates are precisely aligned with the bottom arc starting at $Y=64$, eliminating the prototype's slight asymmetrical rendering.</li>
-            <li><strong>Emblem Sizing (Safe-Zone Compliance)</strong>: The visual emblem spans from $X=32$ to $X=76$ (total width of $44\text{dp}$), which is safely within the central $66\text{dp}$ Safe Circle ($33\text{dp}$ radius). This guarantees **zero clipping** on all launcher variations applying circular or rounded-square masks.</li>
-            <li><strong>Visual Balance & Weights</strong>: By removing the concentric circles, the core brand assets (the Rupee symbol and directional transaction loops) receive 100% of the focus, dramatically enhancing comprehension speeds in grid-based app drawer contexts.</li>
+            <li><strong>Rupee Geometry Correction (₹)</strong>: The left vertical stem below the loop junction (previously extending down to $Y=62.5$) has been successfully removed. It now merges seamlessly into the diagonal leg at $Y=54.5$. The center now unmistakably reads as a classic, crisp Indian Rupee symbol (**`₹`**) instead of resembling an R.</li>
+            <li><strong>Rupee Bar Legibility</strong>: The double horizontal bars are fully preserved with identical spacing ($2\text{dp}$). At actual $48\text{px}$ and $32\text{px}$ rendering sizes, the two bars remain perfectly distinct and highly legible.</li>
+            <li><strong>Arrowhead Connection Integrity</strong>: The arrowheads join their respective arcs cleanly. Both arrows, their directions, stroke weights ($4\text{dp}$), and separation gaps remain 100% untouched.</li>
+            <li><strong>Geometric & Visual Balance</strong>: The emblem scale, alignment, and optical center remain fully balanced within the solid dark slate background (`#0F172A`).</li>
         </ul>
     </div>
 </div>
