@@ -346,7 +346,7 @@ fun SettingsScreen(
                             icon = Icons.Default.FileDownload,
                             iconTint = EmeraldGreen,
                             title = "Export data",
-                            subtitle = "Save transactions as CSV backup",
+                            subtitle = androidx.compose.ui.res.stringResource(id = com.example.R.string.export_data_subtitle),
                             testTag = "btn_export_data",
                             onClick = {
                                 coroutineScope.launch {
