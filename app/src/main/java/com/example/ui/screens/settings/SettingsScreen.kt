@@ -75,6 +75,7 @@ import com.example.ui.theme.CoralOrangeDark
 import com.example.ui.theme.EmeraldGreen
 import com.example.ui.theme.EmeraldGreenDark
 import com.example.ui.theme.Slate200
+import com.example.ui.theme.Slate100
 import com.example.ui.theme.Slate400
 import com.example.ui.theme.Slate500
 import com.example.ui.theme.Slate700
@@ -104,6 +105,10 @@ fun SettingsScreen(
     var pendingCsvData by remember { mutableStateOf<String?>(null) }
     var pendingBackupData by remember { mutableStateOf<String?>(null) }
     var showRestoreConfirmDialog by remember { mutableStateOf(false) }
+    var pendingRestoreJson by remember { mutableStateOf<String?>(null) }
+    var backupCreatedAt by remember { mutableStateOf<Long?>(null) }
+    var backupFriendCount by remember { mutableStateOf<Int?>(null) }
+    var backupTransactionCount by remember { mutableStateOf<Int?>(null) }
 
     // CSV Document Creator Launcher
     val exportLauncher = rememberLauncherForActivityResult(
@@ -176,15 +181,29 @@ fun SettingsScreen(
                         snackbarHostState.showSnackbar("Failed to read backup: empty file")
                         return@launch
                     }
-                    val app = context.applicationContext as com.example.PhittoosApplication
-                    val result = viewModel.restoreBackupJson(context, jsonContent, app.database)
-                    if (result.isSuccess) {
-                        snackbarHostState.showSnackbar("Data restored successfully")
-                        viewModel.refreshState(context)
-                    } else {
-                        val errorMsg = result.exceptionOrNull()?.message ?: "Unknown error"
-                        snackbarHostState.showSnackbar("Restore failed: $errorMsg")
+
+                    // Pre-validate backup JSON and extract metadata/statistics
+                    val root = org.json.JSONObject(jsonContent)
+                    val metadata = root.optJSONObject("metadata")
+                    if (metadata == null || !metadata.has("backupVersion")) {
+                        snackbarHostState.showSnackbar("Invalid backup: missing metadata")
+                        return@launch
                     }
+                    val version = metadata.getInt("backupVersion")
+                    if (version > 1) { // Current version
+                        snackbarHostState.showSnackbar("Unsupported backup version: $version")
+                        return@launch
+                    }
+
+                    val friendsArray = root.optJSONArray("friends")
+                    val txsArray = root.optJSONArray("transactions")
+
+                    backupCreatedAt = metadata.optLong("createdAt", 0L)
+                    backupFriendCount = friendsArray?.length() ?: 0
+                    backupTransactionCount = txsArray?.length() ?: 0
+
+                    pendingRestoreJson = jsonContent
+                    showRestoreConfirmDialog = true
                 } catch (e: Exception) {
                     snackbarHostState.showSnackbar("Restore failed: ${e.message}")
                 }
@@ -393,8 +412,8 @@ fun SettingsScreen(
                 }
             }
 
-            // 3. DATA SECTION
-            SettingsSection(title = "DATA") {
+            // 3. YOUR DATA SECTION
+            SettingsSection(title = "YOUR DATA") {
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -402,60 +421,12 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // Export Data item
+                        // Back up your data
                         SettingsClickableRow(
                             icon = Icons.Default.FileDownload,
                             iconTint = EmeraldGreen,
-                            title = "Export data",
-                            subtitle = androidx.compose.ui.res.stringResource(id = com.example.R.string.export_data_subtitle),
-                            testTag = "btn_export_data",
-                            onClick = {
-                                coroutineScope.launch {
-                                    val (csv, msg) = viewModel.generateCsvExport()
-                                    if (csv == null) {
-                                        snackbarHostState.showSnackbar(msg)
-                                    } else {
-                                        pendingCsvData = csv
-                                        val defaultName = PhittoosCsvExporter.generateDefaultFileName()
-                                        exportLauncher.launch(defaultName)
-                                    }
-                                }
-                            }
-                        )
-
-                        HorizontalDivider(color = Slate200)
-
-                        // Clear Data item
-                        SettingsClickableRow(
-                            icon = Icons.Default.DeleteForever,
-                            iconTint = MaterialTheme.colorScheme.error,
-                            title = "Clear all data",
-                            subtitle = "Permanently delete all local data",
-                            titleColor = MaterialTheme.colorScheme.error,
-                            testTag = "btn_clear_all_data",
-                            onClick = {
-                                showClearDataDialog = true
-                            }
-                        )
-                    }
-                }
-            }
-
-            // BACKUP & RESTORE SECTION
-            SettingsSection(title = "BACKUP & RESTORE") {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        // Create Backup
-                        SettingsClickableRow(
-                            icon = Icons.Default.FileDownload,
-                            iconTint = EmeraldGreen,
-                            title = androidx.compose.ui.res.stringResource(id = com.example.R.string.create_backup_title),
-                            subtitle = androidx.compose.ui.res.stringResource(id = com.example.R.string.create_backup_subtitle),
+                            title = "Back up your data",
+                            subtitle = "Keep a copy you can restore later",
                             testTag = "btn_create_backup",
                             onClick = {
                                 coroutineScope.launch {
@@ -473,15 +444,38 @@ fun SettingsScreen(
 
                         HorizontalDivider(color = Slate200)
 
-                        // Restore Backup
+                        // Restore from backup
                         SettingsClickableRow(
                             icon = Icons.Default.Storage,
                             iconTint = EmeraldGreen,
-                            title = androidx.compose.ui.res.stringResource(id = com.example.R.string.restore_backup_title),
-                            subtitle = androidx.compose.ui.res.stringResource(id = com.example.R.string.restore_backup_subtitle),
+                            title = "Restore from backup",
+                            subtitle = "Replace current data with a previous backup",
                             testTag = "btn_restore_backup",
                             onClick = {
-                                showRestoreConfirmDialog = true
+                                backupRestoreLauncher.launch(arrayOf("*/*"))
+                            }
+                        )
+
+                        HorizontalDivider(color = Slate200)
+
+                        // Export as CSV
+                        SettingsClickableRow(
+                            icon = Icons.Default.FileDownload,
+                            iconTint = EmeraldGreen,
+                            title = "Export as CSV",
+                            subtitle = "Save a spreadsheet copy for viewing or sharing",
+                            testTag = "btn_export_data",
+                            onClick = {
+                                coroutineScope.launch {
+                                    val (csv, msg) = viewModel.generateCsvExport()
+                                    if (csv == null) {
+                                        snackbarHostState.showSnackbar(msg)
+                                    } else {
+                                        pendingCsvData = csv
+                                        val defaultName = PhittoosCsvExporter.generateDefaultFileName()
+                                        exportLauncher.launch(defaultName)
+                                    }
+                                }
                             }
                         )
                     }
@@ -559,6 +553,30 @@ fun SettingsScreen(
                                 )
                             }
                         }
+                    }
+                }
+            }
+
+            // 5. DANGER ZONE SECTION
+            SettingsSection(title = "DANGER ZONE") {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsClickableRow(
+                            icon = Icons.Default.DeleteForever,
+                            iconTint = MaterialTheme.colorScheme.error,
+                            title = "Clear all data",
+                            subtitle = "Permanently delete everything from this device",
+                            titleColor = MaterialTheme.colorScheme.error,
+                            testTag = "btn_clear_all_data",
+                            onClick = {
+                                showClearDataDialog = true
+                            }
+                        )
                     }
                 }
             }
@@ -655,7 +673,7 @@ fun SettingsScreen(
                     modifier = Modifier.verticalScroll(rememberScrollState())
                 ) {
                     Text(
-                        text = "This will permanently delete all your friends, transactions, and payment history from this device. This cannot be undone.",
+                        text = "This permanently deletes your friends, transactions and history from this device. This cannot be undone unless you created a Phittoos backup earlier.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Slate700
                     )
@@ -691,7 +709,10 @@ fun SettingsScreen(
     // Restore Backup Confirmation Dialog
     if (showRestoreConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { showRestoreConfirmDialog = false },
+            onDismissRequest = {
+                showRestoreConfirmDialog = false
+                pendingRestoreJson = null
+            },
             title = {
                 Text(
                     text = androidx.compose.ui.res.stringResource(id = com.example.R.string.dialog_restore_title),
@@ -701,35 +722,102 @@ fun SettingsScreen(
             },
             text = {
                 Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState())
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = androidx.compose.ui.res.stringResource(id = com.example.R.string.dialog_restore_message),
+                        text = "This will completely replace your current local Phittoos data. Existing local data will be permanently removed.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Slate700
                     )
+
+                    if (backupFriendCount != null && backupTransactionCount != null) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Slate100),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Backup Contents",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Slate900
+                                )
+                                val dateStr = if (backupCreatedAt != null && backupCreatedAt != 0L) {
+                                    try {
+                                        java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault()).format(java.util.Date(backupCreatedAt!!))
+                                    } catch (e: Exception) {
+                                        "Unknown Date"
+                                    }
+                                } else {
+                                    "Unknown Date"
+                                }
+                                Text(
+                                    text = "• Created: $dateStr",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Slate700
+                                )
+                                Text(
+                                    text = "• Friends: $backupFriendCount",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Slate700
+                                )
+                                Text(
+                                    text = "• Transactions: $backupTransactionCount",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Slate700
+                                )
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showRestoreConfirmDialog = false
-                        backupRestoreLauncher.launch(arrayOf("*/*"))
+                        val jsonContent = pendingRestoreJson
+                        if (jsonContent != null) {
+                            coroutineScope.launch {
+                                try {
+                                    val app = context.applicationContext as com.example.PhittoosApplication
+                                    val result = viewModel.restoreBackupJson(context, jsonContent, app.database)
+                                    if (result.isSuccess) {
+                                        snackbarHostState.showSnackbar("Data restored successfully")
+                                        viewModel.refreshState(context)
+                                    } else {
+                                        val errorMsg = result.exceptionOrNull()?.message ?: "Unknown error"
+                                        snackbarHostState.showSnackbar("Restore failed: $errorMsg")
+                                    }
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar("Restore failed: ${e.message}")
+                                } finally {
+                                    pendingRestoreJson = null
+                                }
+                            }
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = CoralOrange
                     ),
                     modifier = Modifier.testTag("dialog_restore_confirm")
                 ) {
-                    Text(androidx.compose.ui.res.stringResource(id = com.example.R.string.dialog_restore_confirm))
+                    Text("Restore & Replace")
                 }
             },
             dismissButton = {
                 TextButton(
-                    onClick = { showRestoreConfirmDialog = false },
+                    onClick = {
+                        showRestoreConfirmDialog = false
+                        pendingRestoreJson = null
+                    },
                     modifier = Modifier.testTag("dialog_restore_cancel")
                 ) {
-                    Text(androidx.compose.ui.res.stringResource(id = com.example.R.string.dialog_restore_cancel), color = Slate700)
+                    Text("Cancel", color = Slate700)
                 }
             }
         )
