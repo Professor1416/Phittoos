@@ -6,9 +6,11 @@ import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.db.AppDatabase
 import com.example.data.preferences.UserPreferences
 import com.example.data.repository.PhittoosRepository
 import com.example.export.PhittoosCsvExporter
+import com.example.export.PhittoosBackupManager
 import com.example.reminder.ReminderNotificationHelper
 import com.example.reminder.SmartReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -112,6 +114,35 @@ class SettingsViewModel(
         val friends = repository.getAllFriendsForExport()
         val csv = PhittoosCsvExporter.buildCsv(transactions, friends)
         return Pair(csv, "Ready to export")
+    }
+
+    suspend fun generateBackupJson(): Pair<String?, String> {
+        return try {
+            val json = PhittoosBackupManager.exportBackup(repository, userPreferences)
+            Pair(json, "Backup ready")
+        } catch (e: Exception) {
+            Pair(null, "Failed to generate backup: ${e.message}")
+        }
+    }
+
+    suspend fun restoreBackupJson(context: Context, jsonString: String, database: AppDatabase): Result<Unit> {
+        val result = PhittoosBackupManager.restoreBackup(jsonString, repository, userPreferences, database)
+        if (result.isSuccess) {
+            ReminderNotificationHelper.cancelAllNotifications(context)
+            if (userPreferences.remindersEnabled) {
+                SmartReminderScheduler.schedulePeriodicReminderCheck(context)
+            } else {
+                SmartReminderScheduler.cancelReminderChecks(context)
+            }
+            _uiState.update {
+                it.copy(
+                    profileName = userPreferences.userName,
+                    remindersEnabled = userPreferences.remindersEnabled,
+                    message = "Restore completed successfully"
+                )
+            }
+        }
+        return result
     }
 
     suspend fun clearAllData(context: Context, onCleared: () -> Unit = {}) {

@@ -81,6 +81,7 @@ import com.example.ui.theme.Slate700
 import com.example.ui.theme.Slate800
 import com.example.ui.theme.Slate900
 import com.example.ui.viewmodel.SettingsViewModel
+import com.example.export.PhittoosBackupManager
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -101,6 +102,8 @@ fun SettingsScreen(
     var showClearDataDialog by remember { mutableStateOf(false) }
 
     var pendingCsvData by remember { mutableStateOf<String?>(null) }
+    var pendingBackupData by remember { mutableStateOf<String?>(null) }
+    var showRestoreConfirmDialog by remember { mutableStateOf(false) }
 
     // CSV Document Creator Launcher
     val exportLauncher = rememberLauncherForActivityResult(
@@ -128,6 +131,64 @@ fun SettingsScreen(
         } else {
             // User cancelled file save dialog - clean up silently
             pendingCsvData = null
+        }
+    }
+
+    // Backup Document Creator Launcher
+    val backupCreateLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val json = pendingBackupData
+            if (json != null) {
+                try {
+                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                        outputStream.write(json.toByteArray(Charsets.UTF_8))
+                        outputStream.flush()
+                    }
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Backup created successfully")
+                    }
+                } catch (e: Exception) {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Backup creation failed: ${e.message}")
+                    }
+                } finally {
+                    pendingBackupData = null
+                }
+            }
+        } else {
+            pendingBackupData = null
+        }
+    }
+
+    // Backup Document Opener Launcher
+    val backupRestoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            coroutineScope.launch {
+                try {
+                    val jsonContent = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        inputStream.readBytes().toString(Charsets.UTF_8)
+                    }
+                    if (jsonContent.isNullOrBlank()) {
+                        snackbarHostState.showSnackbar("Failed to read backup: empty file")
+                        return@launch
+                    }
+                    val app = context.applicationContext as com.example.PhittoosApplication
+                    val result = viewModel.restoreBackupJson(context, jsonContent, app.database)
+                    if (result.isSuccess) {
+                        snackbarHostState.showSnackbar("Data restored successfully")
+                        viewModel.refreshState(context)
+                    } else {
+                        val errorMsg = result.exceptionOrNull()?.message ?: "Unknown error"
+                        snackbarHostState.showSnackbar("Restore failed: $errorMsg")
+                    }
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Restore failed: ${e.message}")
+                }
+            }
         }
     }
 
@@ -380,6 +441,53 @@ fun SettingsScreen(
                 }
             }
 
+            // BACKUP & RESTORE SECTION
+            SettingsSection(title = "BACKUP & RESTORE") {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Create Backup
+                        SettingsClickableRow(
+                            icon = Icons.Default.FileDownload,
+                            iconTint = EmeraldGreen,
+                            title = androidx.compose.ui.res.stringResource(id = com.example.R.string.create_backup_title),
+                            subtitle = androidx.compose.ui.res.stringResource(id = com.example.R.string.create_backup_subtitle),
+                            testTag = "btn_create_backup",
+                            onClick = {
+                                coroutineScope.launch {
+                                    val (json, msg) = viewModel.generateBackupJson()
+                                    if (json == null) {
+                                        snackbarHostState.showSnackbar(msg)
+                                    } else {
+                                        pendingBackupData = json
+                                        val defaultName = PhittoosBackupManager.generateDefaultFileName()
+                                        backupCreateLauncher.launch(defaultName)
+                                    }
+                                }
+                            }
+                        )
+
+                        HorizontalDivider(color = Slate200)
+
+                        // Restore Backup
+                        SettingsClickableRow(
+                            icon = Icons.Default.Storage,
+                            iconTint = EmeraldGreen,
+                            title = androidx.compose.ui.res.stringResource(id = com.example.R.string.restore_backup_title),
+                            subtitle = androidx.compose.ui.res.stringResource(id = com.example.R.string.restore_backup_subtitle),
+                            testTag = "btn_restore_backup",
+                            onClick = {
+                                showRestoreConfirmDialog = true
+                            }
+                        )
+                    }
+                }
+            }
+
             // 4. ABOUT SECTION
             SettingsSection(title = "ABOUT") {
                 Card(
@@ -575,6 +683,53 @@ fun SettingsScreen(
                     modifier = Modifier.testTag("dialog_clear_data_cancel")
                 ) {
                     Text("Cancel", color = Slate700)
+                }
+            }
+        )
+    }
+
+    // Restore Backup Confirmation Dialog
+    if (showRestoreConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreConfirmDialog = false },
+            title = {
+                Text(
+                    text = androidx.compose.ui.res.stringResource(id = com.example.R.string.dialog_restore_title),
+                    fontWeight = FontWeight.Bold,
+                    color = Slate900
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(id = com.example.R.string.dialog_restore_message),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Slate700
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRestoreConfirmDialog = false
+                        backupRestoreLauncher.launch(arrayOf("*/*"))
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CoralOrange
+                    ),
+                    modifier = Modifier.testTag("dialog_restore_confirm")
+                ) {
+                    Text(androidx.compose.ui.res.stringResource(id = com.example.R.string.dialog_restore_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showRestoreConfirmDialog = false },
+                    modifier = Modifier.testTag("dialog_restore_cancel")
+                ) {
+                    Text(androidx.compose.ui.res.stringResource(id = com.example.R.string.dialog_restore_cancel), color = Slate700)
                 }
             }
         )

@@ -79,6 +79,18 @@
     <string name="export_data_title">Export data</string>
     <string name="export_data_subtitle">Save your transactions as a CSV file</string>
 
+    <!-- Backup and Restore -->
+    <string name="backup_restore_title">Backup &amp; Restore</string>
+    <string name="backup_restore_subtitle">Save or restore complete ledger data locally</string>
+    <string name="create_backup_title">Create backup</string>
+    <string name="create_backup_subtitle">Export versioned JSON backup file</string>
+    <string name="restore_backup_title">Restore backup</string>
+    <string name="restore_backup_subtitle">Import and replace with an existing JSON backup</string>
+    <string name="dialog_restore_title">Confirm Restore</string>
+    <string name="dialog_restore_message">Warning: Restoring will completely replace your current local Phittoos data with the backup. This action cannot be undone. Do you want to proceed?</string>
+    <string name="dialog_restore_confirm">Restore &amp; Replace</string>
+    <string name="dialog_restore_cancel">Cancel</string>
+
     <!-- Activity Screen Headings & Navigation -->
     <string name="activity_title">Activity</string>
     <string name="activity_subtitle">Recent money activity</string>

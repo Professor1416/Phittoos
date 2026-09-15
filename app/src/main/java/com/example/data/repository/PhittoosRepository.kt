@@ -19,6 +19,7 @@ import com.example.data.model.effectiveRemainingAmount
 import com.example.domain.ReliabilityEngine
 import androidx.room.withTransaction
 import com.example.data.db.AppDatabase
+import com.example.data.preferences.UserPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
@@ -513,5 +514,41 @@ class PhittoosRepository(
 
     suspend fun getAllFriendsForExport(): List<Friend> {
         return friendDao.getAllFriendsList()
+    }
+
+    suspend fun allActivitiesList(): List<ActivityEntity> {
+        return activityDao?.getAllActivitiesList() ?: emptyList()
+    }
+
+    suspend fun restoreValidatedData(
+        friends: List<Friend>,
+        transactions: List<TransactionEntity>,
+        activities: List<ActivityEntity>,
+        userName: String,
+        hasCompletedOnboarding: Boolean,
+        remindersEnabled: Boolean,
+        userPreferences: UserPreferences
+    ) {
+        runInTransaction {
+            activityDao?.deleteAllActivities()
+            transactionDao.deleteAllTransactions()
+            friendDao.deleteAllFriends()
+
+            for (friend in friends) {
+                friendDao.insertFriend(friend)
+            }
+            for (tx in transactions) {
+                transactionDao.insertTransaction(tx)
+            }
+            if (activityDao != null) {
+                for (act in activities) {
+                    activityDao.insertActivity(act)
+                }
+            }
+
+            userPreferences.userName = userName
+            userPreferences.hasCompletedOnboarding = hasCompletedOnboarding
+            userPreferences.remindersEnabled = remindersEnabled
+        }
     }
 }
