@@ -51,11 +51,10 @@ Retrieved directly from the approved corrected candidate (`logo_preview/logo_com
 4. **Bottom Arrow Head**:
    - **Path**: `M38,68 L32,63 L38,58 Z`
    - **Fill Color**: `#F97316`
-5. **Corrected Rupee Symbol (₹)**:
-   - **Top Bar**: `M46.5,45.5 L61.5,45.5 L61.5,47.5 L46.5,47.5 Z`
-   - **Middle Bar**: `M46.5,49.5 L60.5,49.5 L60.5,51.5 L46.5,51.5 Z`
-   - **Corrected Loop & Diagonal Leg**: `M50.5,45.5 L53,45.5 L53,53.5 C55.5,53.5 57.5,52.5 57.5,50 L57.5,49.5 L59.5,49.5 L59.5,50 C59.5,53.8 56.8,55.5 53,55.5 L53,56.5 L58.5,62.5 L55.5,62.5 L48.5,54.5 L48.5,45.5 Z`
+5. **Standardized Rupee Symbol (₹)**:
+   - **Unified Vector Path (Apache 2.0 License, Google Material Symbols)**: `M56.156,62.500 L47.750,55.889 L47.750,54.000 L52.125,54.000 Q53.781,54.000 54.985,53.186 T56.438,51.167 L46.500,51.167 L46.500,49.278 L56.062,49.278 Q55.531,48.451 54.484,47.921 T52.125,47.389 L46.500,47.389 L46.500,45.500 L61.500,45.500 L61.500,47.389 L57.438,47.389 Q57.875,47.790 58.219,48.263 T58.750,49.278 L61.500,49.278 L61.500,51.167 L58.969,51.167 Q58.719,53.174 56.781,54.532 T52.125,55.889 L51.219,55.889 L59.625,62.500 Z`
    - **Fill Color**: `#FFFFFF`
+   - **Source/License Attribution**: Converted from Google Material Symbols glyph (Apache License 2.0). The incorrect left straight vertical pillar has been entirely eliminated to preserve pure geometric symmetry and traditional ₹ glyph anatomy.
 
 ### Design Metric Boundaries
 * **Emblem Extents**: Horizontal: $X=32$ to $X=76$ (total width `44dp`).
