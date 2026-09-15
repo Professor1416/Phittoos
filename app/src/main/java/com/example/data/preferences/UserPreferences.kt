@@ -18,6 +18,10 @@ class UserPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_REMINDERS_ENABLED, true)
         set(value) = prefs.edit().putBoolean(KEY_REMINDERS_ENABLED, value).apply()
 
+    var lastBackupTime: Long
+        get() = prefs.getLong(KEY_LAST_BACKUP_TIME, 0L)
+        set(value) = prefs.edit().putLong(KEY_LAST_BACKUP_TIME, value).apply()
+
     fun clearAll() {
         prefs.edit().clear().apply()
     }
@@ -26,5 +30,6 @@ class UserPreferences(context: Context) {
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_REMINDERS_ENABLED = "reminders_enabled"
+        private const val KEY_LAST_BACKUP_TIME = "last_backup_time"
     }
 }

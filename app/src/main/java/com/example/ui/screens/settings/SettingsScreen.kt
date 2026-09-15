@@ -61,6 +61,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -94,6 +96,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -109,6 +112,7 @@ fun SettingsScreen(
     var backupCreatedAt by remember { mutableStateOf<Long?>(null) }
     var backupFriendCount by remember { mutableStateOf<Int?>(null) }
     var backupTransactionCount by remember { mutableStateOf<Int?>(null) }
+    var backupProfileName by remember { mutableStateOf<String?>(null) }
 
     // CSV Document Creator Launcher
     val exportLauncher = rememberLauncherForActivityResult(
@@ -151,6 +155,8 @@ fun SettingsScreen(
                         outputStream.write(json.toByteArray(Charsets.UTF_8))
                         outputStream.flush()
                     }
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.updateLastBackupTime(System.currentTimeMillis())
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar("Backup created successfully")
                     }
@@ -182,30 +188,21 @@ fun SettingsScreen(
                         return@launch
                     }
 
-                    // Pre-validate backup JSON and extract metadata/statistics
-                    val root = org.json.JSONObject(jsonContent)
-                    val metadata = root.optJSONObject("metadata")
-                    if (metadata == null || !metadata.has("backupVersion")) {
-                        snackbarHostState.showSnackbar("Invalid backup: missing metadata")
-                        return@launch
+                    val validation = com.example.export.PhittoosBackupManager.validateBackup(jsonContent)
+                    if (validation.isSuccess) {
+                        val summary = validation.getOrNull()!!
+                        backupProfileName = summary.profileName
+                        backupCreatedAt = summary.createdAt
+                        backupFriendCount = summary.friendCount
+                        backupTransactionCount = summary.transactionCount
+                        pendingRestoreJson = jsonContent
+                        showRestoreConfirmDialog = true
+                    } else {
+                        val errorMsg = validation.exceptionOrNull()?.message ?: "Unknown error"
+                        snackbarHostState.showSnackbar(errorMsg)
                     }
-                    val version = metadata.getInt("backupVersion")
-                    if (version > 1) { // Current version
-                        snackbarHostState.showSnackbar("Unsupported backup version: $version")
-                        return@launch
-                    }
-
-                    val friendsArray = root.optJSONArray("friends")
-                    val txsArray = root.optJSONArray("transactions")
-
-                    backupCreatedAt = metadata.optLong("createdAt", 0L)
-                    backupFriendCount = friendsArray?.length() ?: 0
-                    backupTransactionCount = txsArray?.length() ?: 0
-
-                    pendingRestoreJson = jsonContent
-                    showRestoreConfirmDialog = true
                 } catch (e: Exception) {
-                    snackbarHostState.showSnackbar("Restore failed: ${e.message}")
+                    snackbarHostState.showSnackbar("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’.")
                 }
             }
         }
@@ -429,6 +426,7 @@ fun SettingsScreen(
                             subtitle = "Keep a copy you can restore later",
                             testTag = "btn_create_backup",
                             onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 coroutineScope.launch {
                                     val (json, msg) = viewModel.generateBackupJson()
                                     if (json == null) {
@@ -478,6 +476,36 @@ fun SettingsScreen(
                                 }
                             }
                         )
+
+                        if (uiState.lastBackupTime > 0L) {
+                            val lastBackupStr = remember(uiState.lastBackupTime) {
+                                try {
+                                    java.text.SimpleDateFormat("dd MMM yyyy, hh:mm a", java.util.Locale.getDefault()).format(java.util.Date(uiState.lastBackupTime))
+                                } catch (e: Exception) {
+                                    "Unknown"
+                                }
+                            }
+                            HorizontalDivider(color = Slate200)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = EmeraldGreen,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Last backup: $lastBackupStr",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Slate500
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -755,6 +783,13 @@ fun SettingsScreen(
                                     }
                                 } else {
                                     "Unknown Date"
+                                }
+                                if (backupProfileName != null && backupProfileName!!.isNotBlank()) {
+                                    Text(
+                                        text = "• Profile: $backupProfileName",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Slate700
+                                    )
                                 }
                                 Text(
                                     text = "• Created: $dateStr",

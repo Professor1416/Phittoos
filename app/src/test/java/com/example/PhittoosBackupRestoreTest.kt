@@ -218,7 +218,7 @@ class PhittoosBackupRestoreTest {
 
         val result = PhittoosBackupManager.restoreBackup(malformedJson, repository, preferences, database)
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("Malformed JSON") ?: false)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
 
         // Verify data remains untouched
         assertEquals("OriginalUser", preferences.userName)
@@ -243,13 +243,14 @@ class PhittoosBackupRestoreTest {
                 "remindersEnabled": true
               },
               "friends": [],
-              "transactions": []
+              "transactions": [],
+              "activities": []
             }
         """.trimIndent()
 
         val result = PhittoosBackupManager.restoreBackup(unsupportedJson, repository, preferences, database)
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("Unsupported backup version") ?: false)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This backup was created by a newer version of Phittoos and can’t be restored with this version") ?: false)
     }
 
     @Test
@@ -293,13 +294,14 @@ class PhittoosBackupRestoreTest {
                   "direction": "LENT",
                   "status": "OPEN"
                 }
-              ]
+              ],
+              "activities": []
             }
         """.trimIndent()
 
         val result = PhittoosBackupManager.restoreBackup(brokenRefJson, repository, preferences, database)
         assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull()?.message?.contains("Referential Integrity Check Failed") ?: false)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
 
         // Verify original data is completely untouched (atomic transaction safety)
         assertEquals("OriginalUser", preferences.userName)
@@ -310,5 +312,279 @@ class PhittoosBackupRestoreTest {
         val restoredTxs = database.transactionDao().getAllTransactionsOrdered()
         assertEquals(1, restoredTxs.size)
         assertEquals(100.0, restoredTxs.first().amount, 0.0)
+    }
+
+    @Test
+    fun `test 8 csv files are rejected with specific user friendly message`() = runBlocking {
+        val csvContent = """
+            "Friend","Amount","Direction","Status"
+            "Rahul","100.0","LENT","OPEN"
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(csvContent, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertEquals(
+            "CSV files can’t be restored. CSV export is for viewing or sharing your records. Select a Phittoos backup file instead.",
+            result.exceptionOrNull()?.message
+        )
+    }
+
+    @Test
+    fun `test 9 duplicate friend IDs are rejected`() = runBlocking {
+        val duplicateFriendsJson = """
+            {
+              "metadata": { "backupVersion": 1 },
+              "preferences": { "userName": "User" },
+              "friends": [
+                { "id": 1, "name": "FriendOne" },
+                { "id": 1, "name": "FriendTwo" }
+              ],
+              "transactions": [],
+              "activities": []
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(duplicateFriendsJson, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
+    }
+
+    @Test
+    fun `test 10 empty valid backup restores successfully`() = runBlocking {
+        val emptyBackupJson = """
+            {
+              "metadata": {
+                "backupVersion": 1,
+                "appVersion": "1.0.0",
+                "createdAt": 1726394000000
+              },
+              "preferences": {
+                "userName": "Empty Snapshot User",
+                "hasCompletedOnboarding": true,
+                "remindersEnabled": false
+              },
+              "friends": [],
+              "transactions": [],
+              "activities": []
+            }
+        """.trimIndent()
+
+        // Establish original data
+        database.friendDao().insertFriend(Friend(name = "Amit"))
+
+        val result = PhittoosBackupManager.restoreBackup(emptyBackupJson, repository, preferences, database)
+        assertTrue(result.isSuccess)
+
+        assertEquals("Empty Snapshot User", preferences.userName)
+        assertFalse(preferences.remindersEnabled)
+        assertTrue(database.friendDao().getAllFriendsList().isEmpty())
+    }
+
+    @Test
+    fun `test 11 restoring same backup twice works without duplication`() = runBlocking {
+        val fId = database.friendDao().insertFriend(Friend(name = "Amit"))
+        val backupJson = PhittoosBackupManager.exportBackup(repository, preferences)
+
+        // Restore once
+        val res1 = PhittoosBackupManager.restoreBackup(backupJson, repository, preferences, database)
+        assertTrue(res1.isSuccess)
+        assertEquals(1, database.friendDao().getAllFriendsList().size)
+
+        // Restore twice
+        val res2 = PhittoosBackupManager.restoreBackup(backupJson, repository, preferences, database)
+        assertTrue(res2.isSuccess)
+        assertEquals(1, database.friendDao().getAllFriendsList().size)
+    }
+
+    @Test
+    fun `test 12 restoring old backup over newer data produces exactly old snapshot`() = runBlocking {
+        // Old snapshot setup
+        val fId1 = database.friendDao().insertFriend(Friend(name = "Amit"))
+        val oldBackup = PhittoosBackupManager.exportBackup(repository, preferences)
+
+        // Add newer data
+        val fId2 = database.friendDao().insertFriend(Friend(name = "Sumit"))
+        database.transactionDao().insertTransaction(
+            TransactionEntity(
+                friendId = fId2,
+                amount = 150.0,
+                direction = TransactionDirection.LENT,
+                status = TransactionStatus.OPEN
+            )
+        )
+        assertEquals(2, database.friendDao().getAllFriendsList().size)
+        assertEquals(1, database.transactionDao().getAllTransactionsOrdered().size)
+
+        // Restore old snapshot
+        val res = PhittoosBackupManager.restoreBackup(oldBackup, repository, preferences, database)
+        assertTrue(res.isSuccess)
+
+        val finalFriends = database.friendDao().getAllFriendsList()
+        assertEquals(1, finalFriends.size)
+        assertEquals("Amit", finalFriends.first().name)
+        assertTrue(database.transactionDao().getAllTransactionsOrdered().isEmpty())
+    }
+
+    @Test
+    fun `test 13 duplicate transaction IDs are rejected`() = runBlocking {
+        val json = """
+            {
+              "metadata": { "backupVersion": 1 },
+              "preferences": { "userName": "User" },
+              "friends": [
+                { "id": 1, "name": "Amit" }
+              ],
+              "transactions": [
+                { "id": 100, "friendId": 1, "amount": 50.0, "direction": "LENT", "status": "OPEN" },
+                { "id": 100, "friendId": 1, "amount": 25.0, "direction": "BORROWED", "status": "OPEN" }
+              ],
+              "activities": []
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(json, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
+    }
+
+    @Test
+    fun `test 14 duplicate activity IDs are rejected`() = runBlocking {
+        val json = """
+            {
+              "metadata": { "backupVersion": 1 },
+              "preferences": { "userName": "User" },
+              "friends": [
+                { "id": 1, "name": "Amit" }
+              ],
+              "transactions": [
+                { "id": 10, "friendId": 1, "amount": 50.0, "direction": "LENT", "status": "OPEN" }
+              ],
+              "activities": [
+                { "id": 5, "type": "TRANSACTION_CREATED", "friendId": 1, "transactionId": 10, "amount": 50.0 },
+                { "id": 5, "type": "TRANSACTION_SETTLED", "friendId": 1, "transactionId": 10 }
+              ]
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(json, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
+    }
+
+    @Test
+    fun `test 15 activity referencing missing transaction is rejected`() = runBlocking {
+        val json = """
+            {
+              "metadata": { "backupVersion": 1 },
+              "preferences": { "userName": "User" },
+              "friends": [
+                { "id": 1, "name": "Amit" }
+              ],
+              "transactions": [
+                { "id": 10, "friendId": 1, "amount": 50.0, "direction": "LENT", "status": "OPEN" }
+              ],
+              "activities": [
+                { "id": 5, "type": "TRANSACTION_CREATED", "friendId": 1, "transactionId": 999, "amount": 50.0 }
+              ]
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(json, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
+    }
+
+    @Test
+    fun `test 16 random non-backup JSON is rejected`() = runBlocking {
+        val randomJson = """
+            {
+              "someRandomKey": "randomValue",
+              "anotherKey": 12345
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(randomJson, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
+    }
+
+    @Test
+    fun `test 17 non-positive transaction amount is rejected`() = runBlocking {
+        val json = """
+            {
+              "metadata": { "backupVersion": 1 },
+              "preferences": { "userName": "User" },
+              "friends": [ { "id": 1, "name": "Amit" } ],
+              "transactions": [
+                { "id": 10, "friendId": 1, "amount": 0.0, "direction": "LENT", "status": "OPEN" }
+              ],
+              "activities": []
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(json, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
+    }
+
+    @Test
+    fun `test 18 paidAmount exceeding original amount is rejected`() = runBlocking {
+        val json = """
+            {
+              "metadata": { "backupVersion": 1 },
+              "preferences": { "userName": "User" },
+              "friends": [ { "id": 1, "name": "Amit" } ],
+              "transactions": [
+                { "id": 10, "friendId": 1, "amount": 100.0, "paidAmount": 100.01, "direction": "LENT", "status": "OPEN" }
+              ],
+              "activities": []
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(json, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
+    }
+
+    @Test
+    fun `test 19 invalid direction enum value is rejected`() = runBlocking {
+        val json = """
+            {
+              "metadata": { "backupVersion": 1 },
+              "preferences": { "userName": "User" },
+              "friends": [ { "id": 1, "name": "Amit" } ],
+              "transactions": [
+                { "id": 10, "friendId": 1, "amount": 100.0, "direction": "INVALID_ENUM", "status": "OPEN" }
+              ],
+              "activities": []
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(json, repository, preferences, database)
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("This isn’t a valid Phittoos backup file") ?: false)
+    }
+
+    @Test
+    fun `test 20 current profile name is replaced by backup profile name`() = runBlocking {
+        preferences.userName = "New Profile Name"
+
+        val backupJson = """
+            {
+              "metadata": { "backupVersion": 1 },
+              "preferences": {
+                "userName": "Backup Profile Name",
+                "hasCompletedOnboarding": true,
+                "remindersEnabled": true
+              },
+              "friends": [],
+              "transactions": [],
+              "activities": []
+            }
+        """.trimIndent()
+
+        val result = PhittoosBackupManager.restoreBackup(backupJson, repository, preferences, database)
+        assertTrue(result.isSuccess)
+        assertEquals("Backup Profile Name", preferences.userName)
     }
 }

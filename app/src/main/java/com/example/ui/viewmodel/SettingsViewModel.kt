@@ -27,7 +27,8 @@ data class SettingsUiState(
     val isExporting: Boolean = false,
     val isClearingData: Boolean = false,
     val appVersion: String = "1.0",
-    val message: String? = null
+    val message: String? = null,
+    val lastBackupTime: Long = 0L
 )
 
 class SettingsViewModel(
@@ -61,8 +62,16 @@ class SettingsViewModel(
                 profileName = userPreferences.userName,
                 remindersEnabled = userPreferences.remindersEnabled,
                 isNotificationPermissionGranted = permissionGranted,
-                appVersion = version
+                appVersion = version,
+                lastBackupTime = userPreferences.lastBackupTime
             )
+        }
+    }
+
+    fun updateLastBackupTime(time: Long) {
+        userPreferences.lastBackupTime = time
+        _uiState.update {
+            it.copy(lastBackupTime = time)
         }
     }
 

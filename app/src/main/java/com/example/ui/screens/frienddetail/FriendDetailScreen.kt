@@ -67,6 +67,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -123,6 +125,7 @@ fun FriendDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     LifecycleResumeEffect(viewModel) {
         viewModel.onScreenResumed()
@@ -377,6 +380,7 @@ fun FriendDetailScreen(
                     friendName = friend.name,
                     tx = tx,
                     onConfirm = { amount ->
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         val id = tx.id
                         txToRepay = null
                         viewModel.recordRepayment(id, amount)
@@ -391,6 +395,7 @@ fun FriendDetailScreen(
                     friendName = friend.name,
                     tx = tx,
                     onConfirm = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.settleTransaction(tx.id)
                         txToSettle = null
                     },
@@ -406,6 +411,7 @@ fun FriendDetailScreen(
                     totalRemaining = uiState.bulkSettlementTotalRemaining,
                     openCount = uiState.bulkSettlementOpenCount,
                     onConfirm = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.settleAllSameDirection()
                         showBulkSettlementDialog = false
                     },
