@@ -10,11 +10,11 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.professor1416.phittoos"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.phittoos.mhzrtp"
+    applicationId = "com.professor1416.phittoos"
     minSdk = 24
     targetSdk = 36
     versionCode = 1

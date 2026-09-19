@@ -7,14 +7,16 @@ This document records the specifications, verification details, and artifacts fo
 ## 1. Release Specifications & Meta
 
 *   **Release Candidate ID**: `Phittoos-V1.0.0-RC1`
-*   **Build Date**: September 15, 2026
+*   **Build Date**: September 19, 2026
 *   **Git Commit SHA**: `N/A` (Determinable only on your local workstation git repository where the project was cloned; sandbox workspace build ran outside a local `.git` repository tree).
-*   **Application ID**: `com.aistudio.phittoos.mhzrtp`
+*   **Application ID**: `com.professor1416.phittoos`
 *   **Version Code**: `1`
 *   **Version Name**: `1.0.0`
 *   **Minimum SDK**: `24`
 *   **Target SDK**: `36`
 *   **Compile SDK**: `36` (API 36, minor API level 1)
+
+*Note: The package/application identity `com.professor1416.phittoos` is now locked for production.*
 
 ---
 
@@ -60,6 +62,7 @@ The following exact commands were executed to produce the clean production relea
 *   **Compilation & Linter**: Completed with zero syntax errors, build failures, or dependency conflicts.
 *   **Unit & Local Roborazzi Tests**: Passed successfully.
 *   **Upgrade Safety**: Database migration/source compatibility checks passed. Physical install-over-existing-data verification remains pending on a real device or emulator.
+*   **Upgrade Consequence Note**: Do NOT claim an existing installation using `com.aistudio.phittoos.mhzrtp` can be updated in-place to `com.professor1416.phittoos`. Because the app has not been publicly released yet, treat the new `applicationId` as the permanent pre-release identity. Existing test-device installs using the old `applicationId` may need uninstall/reinstall. Existing JSON Phittoos backups remain logically compatible because backup format/data IDs do not depend on the Android `applicationId` (this is verified against the backup restoration code, as the schema only maps entities and properties, without matching or embedding any Android `applicationId` properties).
 
 ---
 
