@@ -24,58 +24,101 @@ This document records the specifications, verification details, and artifacts fo
 
 | Artifact Type | Build Status | Artifact File Path | File Size | SHA-256 Checksum |
 | :--- | :--- | :--- | :--- | :--- |
-| **Release APK** | Successfully Compiled | `app/build/outputs/apk/release/app-release-unsigned.apk` | 16 MB | `b904f83e777eca458512285e9cca118ca0f1cd41e2d62775a9819b44c3b47243` |
-| **Release AAB** | Successfully Compiled | `app/build/outputs/bundle/release/app-release.aab` | 15 MB | `6ab7b3864ff9a2c9d6ade5aaa7d3384df99c7d2cdb93ef9b965105ff187a99fe` |
+| **Release APK** | Successfully Compiled | `app/build/outputs/apk/release/app-release-unsigned.apk` | 11.6 MB (11,640,939 bytes) | `4516b1edcd90b5043316a82508e1908c5feeedb46b979f931b61338bcea20c9d` |
+| **Release AAB** | Successfully Compiled | `app/build/outputs/bundle/release/app-release.aab` | 11.3 MB (11,281,367 bytes) | `7baf6833b89fa088ff78deabba4096e603c97b42789e66a2aec172631b32fa76` |
 
 ---
 
-## 3. Signing Status
+## 3. Dependency & Network Audit Results
 
-*   **Build Output Status**: 
-    *   **Release APK Build**: **SUCCEEDED**
-    *   **Release AAB Build**: **SUCCEEDED**
-*   **Signing Configuration**: **Production signing has NOT been completed.** Build outputs `app-release-unsigned.apk` and `app-release.aab` are prepared unsigned to protect credentials and prevent hardcoding secrets.
-*   **Signed APK/Device Verification**: Remains a **manual owner step** to sign using your private upload keystore.
-*   **Manual Signing Recommendation**: Use `apksigner` and `jarsigner` with your secure private `.jks` upload key:
-    ```bash
-    apksigner sign --ks my-upload-key.jks --out app-release-signed.apk app-release-unsigned.apk
-    ```
-
----
-
-## 4. Build Commands Executed
-
-The following exact commands were executed to produce the clean production release builds:
-1.  **Release APK**:
-    ```bash
-    gradle :app:assembleRelease
-    ```
-2.  **Release AAB Bundle**:
-    ```bash
-    gradle :app:bundleRelease
-    ```
+*   **Unused SDKs Stripped**:
+    *   Firebase AI (`firebase.ai`)
+    *   Firebase App Check (`firebase.appcheck.recaptcha`, `firebase.appcheck.debug`)
+    *   Firebase BOM & Google Services Plugin
+    *   Retrofit & OkHttp (`retrofit`, `okhttp`, `logging.interceptor`, `converter.moshi`)
+    *   Moshi Kotlin / Codegen (`moshi.kotlin`, `moshi.kotlin.codegen` — JSON backup relies purely on Android's built-in `org.json`)
+*   **Network & Permission Status**:
+    *   `android.permission.INTERNET`: **NOT PRESENT** in merged release manifest.
+    *   `android.permission.ACCESS_NETWORK_STATE`: Present via AndroidX WorkManager runtime constraints (normal install-time permission, no network calls made).
+    *   `android.permission.POST_NOTIFICATIONS`: Declared for local overdue reminders only.
+    *   No third-party analytics, ads, or telemetry libraries are present in the release binary.
 
 ---
 
-## 5. Verification & Testing
+## 4. Production Keystore & Signing Instructions
 
-*   **Compilation & Linter**: Completed with zero syntax errors, build failures, or dependency conflicts.
-*   **Unit & Local Roborazzi Tests**: Passed successfully.
-*   **Upgrade Safety**: Database migration/source compatibility checks passed. Physical install-over-existing-data verification remains pending on a real device or emulator.
-*   **Upgrade Consequence Note**: Do NOT claim an existing installation using `com.aistudio.phittoos.mhzrtp` can be updated in-place to `com.professor1416.phittoos`. Because the app has not been publicly released yet, treat the new `applicationId` as the permanent pre-release identity. Existing test-device installs using the old `applicationId` may need uninstall/reinstall. Existing JSON Phittoos backups remain logically compatible because backup format/data IDs do not depend on the Android `applicationId` (this is verified against the backup restoration code, as the schema only maps entities and properties, without matching or embedding any Android `applicationId` properties).
+### Generating a Secure Local Upload Keystore
+Run the following command on your secure local workstation (do not commit keystores or passwords to version control):
+
+```bash
+keytool -genkeypair \
+  -v \
+  -keystore my-upload-key.jks \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000 \
+  -alias upload
+```
+
+### Environment Variable Setup for Automated Local Builds
+Set these environment variables on your local machine before executing `./gradlew assembleRelease` or `bundleRelease`:
+
+```bash
+export KEYSTORE_PATH="/path/to/your/my-upload-key.jks"
+export STORE_PASSWORD="your_keystore_password"
+export KEY_PASSWORD="your_key_password"
+```
+
+### Signing and Verifying an Unsigned APK
+To manually sign and verify the unsigned release APK:
+
+```bash
+# 1. Align and Sign the APK
+apksigner sign \
+  --ks my-upload-key.jks \
+  --ks-key-alias upload \
+  --out app-release-signed.apk \
+  app/build/outputs/apk/release/app-release-unsigned.apk
+
+# 2. Verify Signing Certificate and Integrity
+apksigner verify --verbose --print-certs app-release-signed.apk
+```
 
 ---
 
-## 6. Critical Release Blockers (Action Required)
+## 5. Verification & Upgrade Safety
 
-As mandated by Google Play developer policies and Task 18C compliance, the following placeholders must be replaced with live production URLs before submitting the app to production:
-
-1.  **Privacy Support Email**: `support@phittoos.example.com` inside `/docs/PRIVACY.md` must be replaced with the publisher's real public support email.
-2.  **Product Website URL**: `https://ai.studio/build` inside `/docs/PRIVACY.md` must be replaced with the actual hosted page/policy website.
-3.  **Privacy Policy URL**: Host the plain-text/HTML version of the final `PRIVACY.md` on your web host (e.g., GitHub Pages) and register that live URL in Google Play Console.
+*   **Compilation & Linter**: Completed with zero syntax errors or dependency conflicts.
+*   **Unit & Local JVM Tests**: All 215 tests passed cleanly.
+*   **Upgrade Consequence Note**: Do NOT claim an existing installation using `com.aistudio.phittoos.mhzrtp` can be updated in-place to `com.professor1416.phittoos`. Because the app has not been publicly released yet, treat the new `applicationId` as the permanent pre-release identity. Existing test-device installs using the old `applicationId` may need uninstall/reinstall. Existing JSON Phittoos backups remain logically compatible because backup format/data IDs do not depend on the Android `applicationId`.
 
 ---
 
-## 7. Task 18D Status
+## 6. Manual Owner Checklist (Before Play Store Submission)
 
-“Task 18D build preparation is complete. Production signing, signed-device installation, and final upgrade verification remain manual release steps before distribution.”
+The following steps must be completed manually by the app owner outside the automated sandbox:
+
+- [ ] Create Play Console account
+- [ ] Create/store upload keystore securely
+- [ ] Build/sign release using production upload key
+- [ ] Verify signed APK certificate
+- [ ] Install signed APK on real phone
+- [ ] Confirm launcher/splash
+- [ ] Confirm notification permission + reminder
+- [ ] Create real ledger data
+- [ ] Backup JSON
+- [ ] Clear/reinstall as appropriate
+- [ ] Restore backup
+- [ ] Verify balances/history
+- [ ] Verify upgrade using same locked applicationId
+- [ ] Perform TalkBack/large-font smoke test
+- [ ] Replace support email placeholder (`[REQUIRES_OWNER_VALUE]` in `docs/PRIVACY.md`)
+- [ ] Publish privacy policy URL
+- [ ] Enter final Play declarations
+
+---
+
+## 7. Status Summary
+
+*   **Task 18C Status**: **BLOCKED ON MANUAL VALUE** (Codebase and dependencies are 100% compliant and stripped of all unused network SDKs; awaiting owner's real support email and hosted privacy policy URL in `docs/PRIVACY.md`).
+*   **Task 18D Status**: **BUILD PREPARED / MANUAL STEPS REMAIN** (Unsigned release APK & AAB successfully built; production keystore signing, physical device install verification, and Play Console submission remain manual owner actions).

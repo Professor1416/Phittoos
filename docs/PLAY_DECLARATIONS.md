@@ -8,9 +8,9 @@ This guide compiles repository evidence and specific answers required when filli
 
 | Play Console Question | Suggested Answer | Repository Evidence & Verification |
 | :--- | :--- | :--- |
-| **Does your app collect or share any of the required user data types?** | **No** | Phittoos V1 is strictly offline-first. No network permissions (`android.permission.INTERNET`) are declared in `AndroidManifest.xml`. All records are stored strictly on-device in Room SQLite. |
+| **Does your app collect or share any of the required user data types?** | **No** | Phittoos V1 is strictly offline-first. No `android.permission.INTERNET` is declared or merged in the release build. All records are stored strictly on-device in Room SQLite. |
 | **Is all of the user data collected by your app encrypted in transit?** | **Not applicable** | Because no data is transmitted off-device, there is no data in transit. |
-| **Does your app provide a way for users to request that their data be deleted?** | **Yes** | 1. In App Settings, users can tap "Delete everything" which runs `SettingsViewModel.clearAllData()` to wipe all SQL tables and SharedPreferences.<br>2. Uninstalling the app triggers the OS to erase all private directories. |
+| **Does your app provide a way for users to request that their data be deleted?** | **Yes** | 1. In App Settings, users can tap "Delete everything" which runs `SettingsViewModel.clearAllData()` to wipe all SQL tables and SharedPreferences.<br>2. Uninstalling the app triggers the OS to erase all private sandbox directories. |
 
 ---
 
@@ -18,7 +18,7 @@ This guide compiles repository evidence and specific answers required when filli
 
 | Play Console Question | Suggested Answer | Repository Evidence & Verification |
 | :--- | :--- | :--- |
-| **Is access to your app restricted?** | **No, all functionality is available without restriction** | There is no login, OTP, registration, password, or Firebase authentication. The app opens directly to onboarding and then the home screen. |
+| **Is access to your app restricted?** | **No, all functionality is available without restriction** | There is no login, OTP, registration, password, or cloud authentication. The app opens directly to onboarding and then the home screen. |
 
 ---
 
@@ -26,7 +26,7 @@ This guide compiles repository evidence and specific answers required when filli
 
 | Play Console Question | Suggested Answer | Repository Evidence & Verification |
 | :--- | :--- | :--- |
-| **Does your app contain ads?** | **No** | No ad networks or monetization libraries (such as AdMob, Unity, AppLovin) are included in `build.gradle.kts`. There are no banner, interstitial, or native ad views in the codebase. |
+| **Does your app contain ads?** | **No** | No ad networks or monetization libraries (such as AdMob, Unity, AppLovin) are included. The release build contains zero advertising or tracking SDKs. |
 
 ---
 
@@ -35,7 +35,7 @@ This guide compiles repository evidence and specific answers required when filli
 | Play Console Question | Suggested Answer | Repository Evidence & Verification |
 | :--- | :--- | :--- |
 | **Does your app provide any financial features?** | **Verify in Play Console** *(Select: Personal Finance / Ledger tracking)* | Phittoos is a casual, peer-to-peer social debt notebook. It does **NOT** offer payment processing, bank linking, mobile banking, UPI transfers, or credit lending services. |
-| **Statement to provide if asked**: | *"Phittoos is an offline personal ledger for tracking casual peer debts. It does not access bank accounts, process UPI transactions, scan SMS messages, or handle actual money transfers."* | Confirm that no financial SDK or payment Gateway (Razorpay, Stripe, UPI Intent integration) is imported or called in the repository. |
+| **Statement to provide if asked**: | *"Phittoos is an offline personal ledger for tracking casual peer debts. It does not access bank accounts, process UPI transactions, scan SMS messages, or handle actual money transfers."* | Confirm that no financial SDK or payment gateway (Razorpay, Stripe, UPI Intent integration) is present in the repository. |
 
 ---
 
@@ -44,6 +44,7 @@ This guide compiles repository evidence and specific answers required when filli
 | Declared Permission | Purpose to Declare in Play Console | Repository Evidence |
 | :--- | :--- | :--- |
 | **`android.permission.POST_NOTIFICATIONS`** | *Used to show local, user-only overdue notifications.* | Notification channel is configured inside `ReminderNotificationHelper.kt` and scheduled using Jetpack `WorkManager`. Reminders are processed fully on-device. |
+| **`android.permission.ACCESS_NETWORK_STATE`** | *Install-time permission bundled with AndroidX WorkManager.* | Used internally by AndroidX WorkManager runtime constraints. No network requests are made by the application. |
 
 ---
 
@@ -51,4 +52,4 @@ This guide compiles repository evidence and specific answers required when filli
 
 | Play Console Field | Required Action | Verification Checklist |
 | :--- | :--- | :--- |
-| **Privacy Policy URL** | Provide a public URL hosting the exact terms specified in `/docs/PRIVACY.md`. | Host the Markdown contents of `/docs/PRIVACY.md` on GitHub Pages, a corporate website, or a simple text-hosting site, and enter the active URL under **App Content > Privacy Policy** in Play Console. |
+| **Privacy Policy URL** | Provide a public URL hosting the exact terms specified in `/docs/PRIVACY.md`. | Host `/docs/PRIVACY.md` on GitHub Pages or publisher website (replace `[REQUIRES_OWNER_VALUE]` placeholders), and enter the active URL under **App Content > Privacy Policy** in Play Console. |

@@ -16,3 +16,9 @@
 local.properties
 .env
 debug.keystore
+*.jks
+*.keystore
+my-upload-key.jks
+*.p12
+*.pepk
+*.mobileprovision
