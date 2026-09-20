@@ -51,5 +51,6 @@ Phittoos requests only the following permission:
 We may update this Privacy Policy for future releases. Any future update that introduces optional network-dependent or cloud-synced features will require explicit user opt-in and will be accompanied by an updated Privacy Policy.
 
 ## 8. Contact & Support
-*   **Support Email**: `[REQUIRES_OWNER_VALUE: e.g. support@yourdomain.com]`
-*   **Publisher Website / Hosted Policy URL**: `[REQUIRES_OWNER_VALUE: e.g. https://yourdomain.com/phittoos/privacy]`
+*   **Support Email**: `phittoos.app@gmail.com`
+*   **Publisher Website**: `https://professor1416.github.io/Phittoos/`
+*   **Privacy Policy URL**: `https://professor1416.github.io/Phittoos/privacy/`

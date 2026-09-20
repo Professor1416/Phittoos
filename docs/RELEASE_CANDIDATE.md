@@ -112,13 +112,16 @@ The following steps must be completed manually by the app owner outside the auto
 - [ ] Verify balances/history
 - [ ] Verify upgrade using same locked applicationId
 - [ ] Perform TalkBack/large-font smoke test
-- [ ] Replace support email placeholder (`[REQUIRES_OWNER_VALUE]` in `docs/PRIVACY.md`)
-- [ ] Publish privacy policy URL
-- [ ] Enter final Play declarations
+- [ ] Activate GitHub Pages in repository settings to host the Privacy Policy and Support pages
+- [ ] Enter final Play declarations and submit the app
 
 ---
 
 ## 7. Status Summary
 
-*   **Task 18C Status**: **BLOCKED ON MANUAL VALUE** (Codebase and dependencies are 100% compliant and stripped of all unused network SDKs; awaiting owner's real support email and hosted privacy policy URL in `docs/PRIVACY.md`).
-*   **Task 18D Status**: **BUILD PREPARED / MANUAL STEPS REMAIN** (Unsigned release APK & AAB successfully built; production keystore signing, physical device install verification, and Play Console submission remain manual owner actions).
+*   **Task 18C Status**: **COMPLETE IN REPOSITORY / PUBLICATION VERIFICATION PENDING**
+    *   **Support Email**: `phittoos.app@gmail.com`
+    *   **Target Root Support URL**: `https://professor1416.github.io/Phittoos/`
+    *   **Target Privacy Policy URL**: `https://professor1416.github.io/Phittoos/privacy/`
+    *   *Note: Source values are complete and placeholders have been fully replaced. Actual public URL accessibility depends on GitHub Pages activation in GitHub Settings.*
+*   **Task 18D Status**: **BUILD PREPARED / MANUAL SIGNING AND DEVICE STEPS REMAIN** (Unsigned release APK & AAB successfully built; production keystore signing, physical device install verification, and Play Console submission remain manual owner actions).

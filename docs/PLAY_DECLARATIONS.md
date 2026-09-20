@@ -52,4 +52,4 @@ This guide compiles repository evidence and specific answers required when filli
 
 | Play Console Field | Required Action | Verification Checklist |
 | :--- | :--- | :--- |
-| **Privacy Policy URL** | Provide a public URL hosting the exact terms specified in `/docs/PRIVACY.md`. | Host `/docs/PRIVACY.md` on GitHub Pages or publisher website (replace `[REQUIRES_OWNER_VALUE]` placeholders), and enter the active URL under **App Content > Privacy Policy** in Play Console. |
+| **Privacy Policy URL** | Provide a public URL hosting the exact terms specified in `/docs/PRIVACY.md`. | URL: `https://professor1416.github.io/Phittoos/privacy/`<br>Support email: `phittoos.app@gmail.com`<br>Host `/docs/PRIVACY.md` on GitHub Pages (`https://professor1416.github.io/Phittoos/privacy/`), and enter the active URL under **App Content > Privacy Policy** in Play Console. |

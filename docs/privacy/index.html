@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phittoos — Privacy Policy</title>
+    <style>
+        :root {
+            --color-bg: #f8f9fa;
+            --color-text: #212529;
+            --color-primary: #1e3a8a;
+            --color-accent: #0f766e;
+            --color-muted: #6c757d;
+            --color-card: #ffffff;
+            --color-border: #e9ecef;
+            --max-width: 680px;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 24px 16px;
+        }
+
+        .container {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            background-color: var(--color-card);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        header {
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: var(--color-primary);
+            margin: 0 0 8px 0;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+        }
+
+        .last-updated {
+            font-size: 0.95rem;
+            color: var(--color-muted);
+            font-weight: 500;
+            margin: 0;
+        }
+
+        h2 {
+            font-size: 1.3rem;
+            color: var(--color-primary);
+            margin-top: 32px;
+            margin-bottom: 12px;
+            font-weight: 700;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 6px;
+        }
+
+        p, li {
+            font-size: 1rem;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+
+        ul {
+            padding-left: 20px;
+            margin-bottom: 18px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--color-muted);
+            border-top: 1px solid var(--color-border);
+            padding-top: 24px;
+        }
+
+        a {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            font-weight: 600;
+            color: var(--color-accent);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px 16px;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../" class="back-link">&larr; Back to Home</a>
+        
+        <header>
+            <h1>Privacy Policy</h1>
+            <p class="last-updated">Last Updated: September 19, 2026</p>
+        </header>
+
+        <main>
+            <p>
+                Phittoos is a personal, offline-first peer debt and ledger tracking application designed to help you track casual money exchanges between you and your friends. <strong>"Tere mere hisaab… Phittoos!"</strong>
+            </p>
+            <p>
+                This Privacy Policy explains how Phittoos handles your information.
+            </p>
+
+            <h2>1. What Information We Store and Where</h2>
+            <p>
+                Phittoos stores all application data locally on your device in a private SQLite database. There are no user accounts, login systems, or cloud servers in Phittoos V1.
+            </p>
+            <p>The app stores the following data on-device:</p>
+            <ul>
+                <li><strong>Profile Name:</strong> The name you enter during setup (used locally to sign off on reminder message drafts and display on your dashboard).</li>
+                <li><strong>Friend Lists:</strong> Names of friends you record transactions with.</li>
+                <li><strong>Transactions:</strong> Amounts in rupees, transaction directions (Lent or Borrowed), dates, statuses (Open or Settled), and any optional notes you enter.</li>
+                <li><strong>Repayments:</strong> Records of partial and full payments.</li>
+                <li><strong>Application Preferences:</strong> Settings such as local notification preferences.</li>
+            </ul>
+
+            <h2>2. On-Device Storage &amp; Data Transmission</h2>
+            <ul>
+                <li><strong>No Automatic Cloud Transmission:</strong> Phittoos does not automatically transmit ledger data to Phittoos servers or third-party analytics services.</li>
+                <li><strong>Offline Functionality:</strong> All ledger calculations, balance summaries, reliability scores, and reminder evaluations are computed locally on your device.</li>
+                <li><strong>Zero Third-Party SDK Telemetry:</strong> The shipped release build does not include advertising, analytics, tracking, or remote database SDKs.</li>
+            </ul>
+
+            <h2>3. Local Reminders and Notifications</h2>
+            <p>Phittoos provides optional local reminders for overdue transactions:</p>
+            <ul>
+                <li>These reminders are scheduled and triggered directly on your device using Android system schedulers (<code>WorkManager</code>).</li>
+                <li>No external push notification servers or third-party messaging services are used.</li>
+                <li>Draft reminder messages generated by the app for sharing (e.g., via SMS or WhatsApp) are created locally and shared only when you explicitly choose to do so via Android's system share sheet.</li>
+            </ul>
+
+            <h2>4. User-Controlled Exports and Backups</h2>
+            <p>Phittoos provides features to export and backup your data, which are entirely initiated and controlled by you:</p>
+            <ul>
+                <li><strong>CSV Export:</strong> Generates a plain-text CSV representation of your ledger history.</li>
+                <li><strong>JSON Backup:</strong> Creates a structured JSON backup file of your local data.</li>
+                <li><strong>Storage Access Framework (SAF):</strong> All file exports and backups use Android's native Storage Access Framework (SAF). User-controlled export and backup files may be saved to a storage location or provider selected by you through Android's system file picker. Phittoos does not request or require broad read/write storage permissions.</li>
+                <li><strong>Restoring Backups:</strong> Restoring a backup replaces current local records on your device with the contents of the chosen backup file.</li>
+            </ul>
+
+            <h2>5. Deleting Your Data</h2>
+            <p>You have complete control over your local data:</p>
+            <ul>
+                <li>A <strong>"Delete everything"</strong> option is available in App Settings to wipe all friends, transactions, activity history, and preferences from the local database.</li>
+                <li>Uninstalling the Phittoos app causes the Android operating system to delete the app's private sandbox database and preferences.</li>
+                <li><em>Note: Any CSV exports or backup JSON files you previously saved to external storage or cloud providers via the system file picker are not deleted by the app and must be managed or deleted by you directly.</em></li>
+            </ul>
+
+            <h2>6. Permissions and Hardware Access</h2>
+            <p>Phittoos requests only the following permission:</p>
+            <ul>
+                <li><strong><code>POST_NOTIFICATIONS</code>:</strong> Used solely to display local overdue reminder notifications on Android 13+.</li>
+                <li>Phittoos does <strong>not</strong> request contacts access, location access, camera access, microphone access, SMS reading, or bank account linking.</li>
+            </ul>
+
+            <h2>7. Updates to This Policy</h2>
+            <p>
+                We may update this Privacy Policy for future releases. Any future update that introduces optional network-dependent or cloud-synced features will require explicit user opt-in and will be accompanied by an updated Privacy Policy.
+            </p>
+
+            <h2>8. Contact &amp; Support</h2>
+            <p>
+                If you have questions about this privacy policy or face any technical issues, please contact us:
+            </p>
+            <ul>
+                <li><strong>Support Email:</strong> <a href="mailto:phittoos.app@gmail.com">phittoos.app@gmail.com</a></li>
+                <li><strong>Publisher Website:</strong> <a href="https://professor1416.github.io/Phittoos/">https://professor1416.github.io/Phittoos/</a></li>
+                <li><strong>Privacy Policy URL:</strong> <a href="https://professor1416.github.io/Phittoos/privacy/">https://professor1416.github.io/Phittoos/privacy/</a></li>
+            </ul>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Phittoos. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
