@@ -49,5 +49,9 @@ val TransactionEntity.effectivePaidAmount: Double
     get() = (paidAmount ?: 0.0).coerceIn(0.0, amount)
 
 val TransactionEntity.dueInfo: com.professor1416.phittoos.domain.DueDateInfo
-    get() = com.professor1416.phittoos.domain.DueDateHelper.calculateDueState(dueDate, status)
+    get() = if (status != TransactionStatus.OPEN && status != TransactionStatus.PENDING_CONFIRMATION || effectiveRemainingAmount <= 0.0) {
+        com.professor1416.phittoos.domain.DueDateHelper.calculateDueState(dueDate, TransactionStatus.CONFIRMED)
+    } else {
+        com.professor1416.phittoos.domain.DueDateHelper.calculateDueState(dueDate, status)
+    }
 

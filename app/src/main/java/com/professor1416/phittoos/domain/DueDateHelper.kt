@@ -47,8 +47,8 @@ object DueDateHelper {
             )
         }
 
-        // Settled/CONFIRMED transactions are never actively overdue
-        if (status == TransactionStatus.CONFIRMED) {
+        // Settled/CONFIRMED or non-OPEN transactions are never actively overdue, upcoming, or due today
+        if (status != TransactionStatus.OPEN && status != TransactionStatus.PENDING_CONFIRMATION) {
             val formattedDate = formatDueDate(dueDateMillis, nowMillis, timeZone)
             return DueDateInfo(
                 state = DueState.NONE,

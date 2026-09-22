@@ -1082,8 +1082,9 @@ internal fun RepaymentDialog(
     var isSubmitting by remember { mutableStateOf(false) }
 
     val parsedAmount = amountInput.toDoubleOrNull()
+    val isValidAmount = parsedAmount != null && !parsedAmount.isNaN() && !parsedAmount.isInfinite() && parsedAmount > 0.0 && parsedAmount <= remaining + 0.0001
     val ctaText = when {
-        parsedAmount != null && parsedAmount > 0 -> "Record ${Formatters.formatCurrency(parsedAmount)}"
+        isValidAmount -> "Record ${Formatters.formatCurrency(parsedAmount!!)}"
         isLent -> "Record repayment"
         else -> "Record payment"
     }
@@ -1155,7 +1156,16 @@ internal fun RepaymentDialog(
                     onValueChange = { input ->
                         if (input.isEmpty() || input.matches(Regex("""^\d*\.?\d{0,2}$"""))) {
                             amountInput = input
-                            errorMessage = null
+                            val pAmount = input.toDoubleOrNull()
+                            errorMessage = when {
+                                input.isEmpty() -> null
+                                pAmount == null || pAmount <= 0.0 -> UiMessage(R.string.error_repayment_amount_invalid)
+                                pAmount > remaining + 0.0001 -> {
+                                    val formattedRem = Formatters.formatCurrency(remaining)
+                                    UiMessage(R.string.error_repayment_exceeds_remaining, formattedRem)
+                                }
+                                else -> null
+                            }
                         }
                     },
                     label = { Text(amountLabel) },
@@ -1217,27 +1227,16 @@ internal fun RepaymentDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (isSubmitting) return@Button
-                    val trimmed = amountInput.trim()
-                    if (trimmed.isEmpty()) {
-                        errorMessage = UiMessage(R.string.error_repayment_amount_invalid)
-                        return@Button
-                    }
-                    val amount = trimmed.toDoubleOrNull()
-                    if (amount == null || amount.isNaN() || amount.isInfinite() || amount <= 0.0) {
-                        errorMessage = UiMessage(R.string.error_repayment_amount_invalid)
-                        return@Button
-                    }
-                    if (amount > remaining + 0.0001) {
-                        val formattedRem = Formatters.formatCurrency(remaining)
-                        errorMessage = UiMessage(R.string.error_repayment_exceeds_remaining, formattedRem)
+                    if (isSubmitting || !isValidAmount) return@Button
+                    val amount = parsedAmount ?: return@Button
+                    if (amount <= 0.0 || amount > remaining + 0.0001) {
                         return@Button
                     }
 
                     isSubmitting = true
                     onConfirm(amount)
                 },
-                enabled = !isSubmitting,
+                enabled = !isSubmitting && isValidAmount,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isLent) EmeraldGreen else CoralOrange
                 ),
