@@ -61,20 +61,7 @@ import com.professor1416.phittoos.R
 import com.professor1416.phittoos.data.model.ActivityType
 import com.professor1416.phittoos.data.model.NeedsAttentionItem
 import com.professor1416.phittoos.data.model.TransactionDirection
-import com.professor1416.phittoos.ui.components.AvatarInitial
-import com.professor1416.phittoos.ui.theme.CoralOrange
-import com.professor1416.phittoos.ui.theme.CoralOrangeDark
-import com.professor1416.phittoos.ui.theme.CoralOrangeSurface
-import com.professor1416.phittoos.ui.theme.EmeraldGreen
-import com.professor1416.phittoos.ui.theme.EmeraldGreenDark
-import com.professor1416.phittoos.ui.theme.EmeraldGreenSurface
-import com.professor1416.phittoos.ui.theme.Slate100
-import com.professor1416.phittoos.ui.theme.Slate200
-import com.professor1416.phittoos.ui.theme.Slate400
-import com.professor1416.phittoos.ui.theme.Slate500
-import com.professor1416.phittoos.ui.theme.Slate700
-import com.professor1416.phittoos.ui.theme.Slate800
-import com.professor1416.phittoos.ui.theme.Slate900
+import com.professor1416.phittoos.ui.theme.PhittoosColors
 import com.professor1416.phittoos.ui.util.Formatters
 import com.professor1416.phittoos.ui.viewmodel.ActivityDisplayItem
 import com.professor1416.phittoos.ui.viewmodel.ActivityViewModel
@@ -109,12 +96,12 @@ fun ActivityScreen(
                             text = stringResource(R.string.activity_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Slate900
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                         Text(
                             text = stringResource(R.string.activity_subtitle),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate500
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -126,7 +113,7 @@ fun ActivityScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.activity_cd_back),
-                            tint = Slate800
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
@@ -149,7 +136,7 @@ fun ActivityScreen(
                         text = stringResource(R.string.activity_header_needs_attention, uiState.needsAttentionItems.size),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = CoralOrangeDark,
+                        color = PhittoosColors.financial.overdueAccent,
                         modifier = Modifier
                             .padding(vertical = 8.dp)
                             .testTag("header_needs_attention")
@@ -184,7 +171,7 @@ fun ActivityScreen(
                         text = stringResource(R.string.activity_header_recent_activity),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Slate500,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
                             .padding(vertical = 8.dp)
                             .testTag("header_recent_activity")
@@ -197,7 +184,7 @@ fun ActivityScreen(
                             text = dateHeader,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Slate400,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
                         )
                     }
@@ -224,6 +211,7 @@ private fun NeedsAttentionCard(
     onClick: () -> Unit
 ) {
     val clickActionLabel = stringResource(R.string.activity_action_view_friend_details)
+    val financialColors = PhittoosColors.financial
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -233,9 +221,9 @@ private fun NeedsAttentionCard(
             )
             .testTag("card_needs_attention_${item.transactionId}"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CoralOrangeSurface),
+        colors = CardDefaults.cardColors(containerColor = financialColors.overdueContainer),
         border = CardDefaults.outlinedCardBorder().copy(
-            brush = androidx.compose.ui.graphics.SolidColor(CoralOrange.copy(alpha = 0.3f))
+            brush = androidx.compose.ui.graphics.SolidColor(financialColors.overdueAccent.copy(alpha = 0.3f))
         )
     ) {
         Row(
@@ -248,13 +236,13 @@ private fun NeedsAttentionCard(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(CoralOrange.copy(alpha = 0.2f)),
+                    .background(financialColors.overdueAccent.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.WarningAmber,
                     contentDescription = null,
-                    tint = CoralOrangeDark,
+                    tint = financialColors.onOverdueContainer,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -266,7 +254,7 @@ private fun NeedsAttentionCard(
                     text = item.friendName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Slate900,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -279,14 +267,14 @@ private fun NeedsAttentionCard(
                         ),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = Slate800
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "· ${item.formattedStatus}",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
-                        color = CoralOrangeDark
+                        color = financialColors.onOverdueContainer
                     )
                 }
             }
@@ -294,7 +282,7 @@ private fun NeedsAttentionCard(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
-                tint = CoralOrangeDark,
+                tint = financialColors.onOverdueContainer,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -317,7 +305,7 @@ private fun ActivityRowCard(
             )
             .testTag("activity_item_${item.id}"),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -357,7 +345,7 @@ private fun ActivityRowCard(
                         text = item.friendName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Slate900,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -366,7 +354,7 @@ private fun ActivityRowCard(
                         Text(
                             text = item.formattedTime,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Slate400,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 8.dp)
                         )
                     }
@@ -378,20 +366,20 @@ private fun ActivityRowCard(
                     text = item.eventDescription.asString(context),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Slate700
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 if (!item.note.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Slate100,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.padding(top = 2.dp)
                     ) {
                         Text(
                             text = item.note,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Slate500,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
@@ -411,7 +399,7 @@ private fun EmptyActivityState() {
             .padding(vertical = 32.dp)
             .testTag("empty_activity_card"),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -424,13 +412,13 @@ private fun EmptyActivityState() {
                 modifier = Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(Slate100),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.History,
                     contentDescription = null,
-                    tint = Slate400,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -441,7 +429,7 @@ private fun EmptyActivityState() {
                 text = stringResource(R.string.activity_empty_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Slate800
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -449,41 +437,43 @@ private fun EmptyActivityState() {
             Text(
                 text = stringResource(R.string.activity_empty_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Slate500,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }
     }
 }
 
+@Composable
 private fun getActivityIconConfig(
     type: ActivityType,
     direction: TransactionDirection?,
     note: String?
 ): Triple<ImageVector, Color, Color> {
+    val fc = PhittoosColors.financial
     return when (type) {
         ActivityType.TRANSACTION_CREATED -> {
             if (direction == TransactionDirection.LENT) {
-                Triple(Icons.AutoMirrored.Filled.TrendingUp, EmeraldGreenDark, EmeraldGreenSurface)
+                Triple(Icons.AutoMirrored.Filled.TrendingUp, fc.onLentContainer, fc.lentContainer)
             } else {
-                Triple(Icons.AutoMirrored.Filled.TrendingDown, CoralOrangeDark, CoralOrangeSurface)
+                Triple(Icons.AutoMirrored.Filled.TrendingDown, fc.onBorrowedContainer, fc.borrowedContainer)
             }
         }
         ActivityType.PARTIAL_REPAYMENT -> {
             if (direction == TransactionDirection.LENT) {
-                Triple(Icons.Default.Payments, EmeraldGreenDark, EmeraldGreenSurface)
+                Triple(Icons.Default.Payments, fc.onLentContainer, fc.lentContainer)
             } else {
-                Triple(Icons.Default.Payments, CoralOrangeDark, CoralOrangeSurface)
+                Triple(Icons.Default.Payments, fc.onBorrowedContainer, fc.borrowedContainer)
             }
         }
         ActivityType.SETTLED -> {
-            Triple(Icons.Default.CheckCircle, EmeraldGreenDark, EmeraldGreenSurface)
+            Triple(Icons.Default.CheckCircle, fc.onSettledContainer, fc.settledContainer)
         }
         ActivityType.BECAME_OVERDUE -> {
-            Triple(Icons.Default.WarningAmber, CoralOrangeDark, CoralOrangeSurface)
+            Triple(Icons.Default.WarningAmber, fc.onOverdueContainer, fc.overdueContainer)
         }
         ActivityType.REMINDER_SENT -> {
-            Triple(Icons.Default.Notifications, CoralOrangeDark, CoralOrangeSurface)
+            Triple(Icons.Default.Notifications, fc.onOverdueContainer, fc.overdueContainer)
         }
     }
 }

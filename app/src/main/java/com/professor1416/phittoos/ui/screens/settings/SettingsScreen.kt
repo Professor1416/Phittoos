@@ -84,14 +84,6 @@ import com.professor1416.phittoos.export.PhittoosCsvExporter
 import com.professor1416.phittoos.ui.theme.CoralOrange
 import com.professor1416.phittoos.ui.theme.CoralOrangeDark
 import com.professor1416.phittoos.ui.theme.EmeraldGreen
-import com.professor1416.phittoos.ui.theme.EmeraldGreenDark
-import com.professor1416.phittoos.ui.theme.Slate200
-import com.professor1416.phittoos.ui.theme.Slate100
-import com.professor1416.phittoos.ui.theme.Slate400
-import com.professor1416.phittoos.ui.theme.Slate500
-import com.professor1416.phittoos.ui.theme.Slate700
-import com.professor1416.phittoos.ui.theme.Slate800
-import com.professor1416.phittoos.ui.theme.Slate900
 import com.professor1416.phittoos.ui.viewmodel.SettingsViewModel
 import com.professor1416.phittoos.export.PhittoosBackupManager
 import kotlinx.coroutines.launch
@@ -241,7 +233,7 @@ fun SettingsScreen(
                         text = "Settings",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Slate900
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 },
                 navigationIcon = {
@@ -252,7 +244,7 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Slate800
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
@@ -300,7 +292,7 @@ fun SettingsScreen(
                                 Text(
                                     text = "Name",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Slate500,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Text(
@@ -322,7 +314,7 @@ fun SettingsScreen(
                             Text(
                                 text = "Edit",
                                 fontWeight = FontWeight.SemiBold,
-                                color = EmeraldGreenDark
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -366,7 +358,7 @@ fun SettingsScreen(
                                         AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark_desc)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Slate500
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -459,12 +451,12 @@ fun SettingsScreen(
                                         text = "Repayment reminders",
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Slate900
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "Periodic notifications for overdue money lent",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Slate500
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -482,7 +474,7 @@ fun SettingsScreen(
                         }
 
                         if (!uiState.isNotificationPermissionGranted && uiState.remindersEnabled) {
-                            HorizontalDivider(color = Slate200)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -539,7 +531,7 @@ fun SettingsScreen(
                             }
                         )
 
-                        HorizontalDivider(color = Slate200)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                         // Restore from backup
                         SettingsClickableRow(
@@ -553,7 +545,7 @@ fun SettingsScreen(
                             }
                         )
 
-                        HorizontalDivider(color = Slate200)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                         // Export as CSV
                         SettingsClickableRow(
@@ -584,7 +576,7 @@ fun SettingsScreen(
                                     "Unknown"
                                 }
                             }
-                            HorizontalDivider(color = Slate200)
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -601,7 +593,7 @@ fun SettingsScreen(
                                 Text(
                                     text = "Last backup: $lastBackupStr",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Slate500
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -630,26 +622,26 @@ fun SettingsScreen(
                                 Icon(
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
-                                    tint = Slate700,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
                                     text = "App version",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = Slate900,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
                             Text(
                                 text = "v${uiState.appVersion}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Slate500,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
 
-                        HorizontalDivider(color = Slate200)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                         // Privacy & Storage Row
                         Row(
@@ -661,7 +653,7 @@ fun SettingsScreen(
                             Icon(
                                 imageVector = Icons.Default.Storage,
                                 contentDescription = null,
-                                tint = Slate700,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))
@@ -669,14 +661,14 @@ fun SettingsScreen(
                                 Text(
                                     text = "Privacy & Storage",
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = Slate900,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = "Your Phittoos data is stored on this device.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Slate500
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -719,11 +711,12 @@ fun SettingsScreen(
                 showEditNameDialog = false
                 viewModel.clearNameError()
             },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Text(
                     text = "Edit Profile Name",
                     fontWeight = FontWeight.Bold,
-                    color = Slate900
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
@@ -778,7 +771,7 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.testTag("dialog_edit_name_cancel")
                 ) {
-                    Text("Cancel", color = Slate700)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -788,11 +781,12 @@ fun SettingsScreen(
     if (showClearDataDialog) {
         AlertDialog(
             onDismissRequest = { showClearDataDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Text(
                     text = "Clear all data from this phone?",
                     fontWeight = FontWeight.Bold,
-                    color = Slate900
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
@@ -802,7 +796,7 @@ fun SettingsScreen(
                     Text(
                         text = "This permanently deletes your friends, transactions and history from this device. This cannot be undone unless you created a Phittoos backup earlier.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate700
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             },
@@ -827,7 +821,7 @@ fun SettingsScreen(
                     onClick = { showClearDataDialog = false },
                     modifier = Modifier.testTag("dialog_clear_data_cancel")
                 ) {
-                    Text("Cancel", color = Slate700)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -840,11 +834,12 @@ fun SettingsScreen(
                 showRestoreConfirmDialog = false
                 pendingRestoreJson = null
             },
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Text(
                     text = androidx.compose.ui.res.stringResource(id = com.professor1416.phittoos.R.string.dialog_restore_title),
                     fontWeight = FontWeight.Bold,
-                    color = Slate900
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             text = {
@@ -855,12 +850,12 @@ fun SettingsScreen(
                     Text(
                         text = "This will completely replace your current local Phittoos data. Existing local data will be permanently removed.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate700
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     if (backupFriendCount != null && backupTransactionCount != null) {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Slate100),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -872,7 +867,7 @@ fun SettingsScreen(
                                     text = "Backup Contents",
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Slate900
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 val dateStr = if (backupCreatedAt != null && backupCreatedAt != 0L) {
                                     try {
@@ -887,23 +882,23 @@ fun SettingsScreen(
                                     Text(
                                         text = "• Profile: $backupProfileName",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Slate700
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Text(
                                     text = "• Created: $dateStr",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Slate700
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = "• Friends: $backupFriendCount",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Slate700
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = "• Transactions: $backupTransactionCount",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Slate700
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -951,7 +946,7 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.testTag("dialog_restore_cancel")
                 ) {
-                    Text("Cancel", color = Slate700)
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -968,7 +963,7 @@ private fun SettingsSection(
             text = title,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = Slate500,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             letterSpacing = 1.sp,
             modifier = Modifier.padding(start = 4.dp)
         )
@@ -1016,14 +1011,14 @@ private fun SettingsClickableRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate500
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
             contentDescription = null,
-            tint = Slate400,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -1055,7 +1050,7 @@ private fun ThemeOptionRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (isSelected) EmeraldGreen else Slate400,
+                tint = if (isSelected) EmeraldGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -1064,12 +1059,12 @@ private fun ThemeOptionRow(
                     text = title,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isSelected) EmeraldGreenDark else MaterialTheme.colorScheme.onSurface
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate500
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1078,7 +1073,7 @@ private fun ThemeOptionRow(
             onClick = null,
             colors = RadioButtonDefaults.colors(
                 selectedColor = EmeraldGreen,
-                unselectedColor = Slate400
+                unselectedColor = MaterialTheme.colorScheme.outline
             ),
             modifier = Modifier
                 .size(24.dp)

@@ -47,6 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import com.professor1416.phittoos.domain.ReliabilityInfo
 import com.professor1416.phittoos.R
@@ -94,21 +95,8 @@ import com.professor1416.phittoos.domain.DueState
 import com.professor1416.phittoos.ui.components.AvatarInitial
 import com.professor1416.phittoos.ui.theme.Amber100
 import com.professor1416.phittoos.ui.theme.Amber700
-import com.professor1416.phittoos.ui.theme.CoralOrange
-import com.professor1416.phittoos.ui.theme.CoralOrangeDark
-import com.professor1416.phittoos.ui.theme.CoralOrangeSurface
 import com.professor1416.phittoos.ui.theme.EmeraldGreen
-import com.professor1416.phittoos.ui.theme.EmeraldGreenDark
-import com.professor1416.phittoos.ui.theme.EmeraldGreenSurface
-import com.professor1416.phittoos.ui.theme.Red100
-import com.professor1416.phittoos.ui.theme.Red600
-import com.professor1416.phittoos.ui.theme.Slate100
-import com.professor1416.phittoos.ui.theme.Slate200
-import com.professor1416.phittoos.ui.theme.Slate400
-import com.professor1416.phittoos.ui.theme.Slate500
-import com.professor1416.phittoos.ui.theme.Slate600
-import com.professor1416.phittoos.ui.theme.Slate700
-import com.professor1416.phittoos.ui.theme.Slate900
+import com.professor1416.phittoos.ui.theme.PhittoosColors
 import com.professor1416.phittoos.ui.util.Formatters
 import com.professor1416.phittoos.ui.util.UiMessage
 import com.professor1416.phittoos.ui.viewmodel.BulkSettlementEligibility
@@ -154,7 +142,7 @@ fun FriendDetailScreen(
                     Text(
                         text = uiState.friend?.name ?: "Friend Details",
                         fontWeight = FontWeight.Bold,
-                        color = Slate900,
+                        color = MaterialTheme.colorScheme.onBackground,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -167,11 +155,13 @@ fun FriendDetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Slate900
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { innerPadding ->
@@ -199,7 +189,7 @@ fun FriendDetailScreen(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = Slate400,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(56.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -207,13 +197,13 @@ fun FriendDetailScreen(
                         text = "Friend not found",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Slate900
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "This friend may have been deleted or your local data was reset.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate500,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(24.dp))
@@ -266,7 +256,7 @@ fun FriendDetailScreen(
                                 .testTag("card_mixed_settlement_notice")
                                 .semantics(mergeDescendants = true) {},
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = Slate100)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                         ) {
                             Row(
                                 modifier = Modifier.padding(14.dp),
@@ -275,7 +265,7 @@ fun FriendDetailScreen(
                                 Icon(
                                     imageVector = Icons.Default.Info,
                                     contentDescription = null,
-                                    tint = Slate700,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier
                                         .size(20.dp)
                                         .padding(top = 2.dp)
@@ -286,13 +276,13 @@ fun FriendDetailScreen(
                                         text = stringResource(R.string.mixed_direction_title),
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Slate900
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
                                         text = stringResource(R.string.mixed_direction_body),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Slate700,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         lineHeight = 18.sp
                                     )
                                 }
@@ -313,14 +303,14 @@ fun FriendDetailScreen(
                             text = "TRANSACTION TIMELINE (${uiState.timeline.size})",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Slate500
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (uiState.openTransactionsCount > 0) {
                             Text(
                                 text = "${uiState.openTransactionsCount} open",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = EmeraldGreenDark
+                                color = PhittoosColors.financial.onLentContainer
                             )
                         }
                     }
@@ -333,7 +323,7 @@ fun FriendDetailScreen(
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
                             Column(
                                 modifier = Modifier
@@ -344,7 +334,7 @@ fun FriendDetailScreen(
                                 Text(
                                     text = "No transactions yet with ${friend.name}",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Slate500,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -438,9 +428,11 @@ private fun FriendDetailHeader(
     openTransactionsCount: Int,
     reliabilityInfo: ReliabilityInfo
 ) {
+    val financialColors = PhittoosColors.financial
+
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
@@ -459,7 +451,7 @@ private fun FriendDetailHeader(
                 text = friendName,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Slate900,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
 
@@ -471,47 +463,47 @@ private fun FriendDetailHeader(
                     Text(
                         text = "owes you",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate500,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = Formatters.formatCurrency(netBalance),
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = EmeraldGreenDark
+                        color = financialColors.lentAccent
                     )
                 }
                 netBalance < 0 -> {
                     Text(
                         text = "you owe",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate500,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = Formatters.formatCurrency(abs(netBalance)),
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = CoralOrangeDark
+                        color = financialColors.borrowedAccent
                     )
                 }
                 openTransactionsCount > 0 -> {
                     Text(
                         text = "Net balance ₹0",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate500,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = "₹0",
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Slate900
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "($openTransactionsCount unsettled loan${if (openTransactionsCount == 1) "" else "s"})",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Slate500,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -519,20 +511,20 @@ private fun FriendDetailHeader(
                     Text(
                         text = "All settled up",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate500,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = "₹0 (Phittoos!)",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldGreenDark
+                        color = financialColors.lentAccent
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Slate200.copy(alpha = 0.6f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Spacer(modifier = Modifier.height(14.dp))
 
             // Private Reliability Section
@@ -547,6 +539,7 @@ internal fun ActionRow(
     onAddTransaction: () -> Unit,
     onRequestBulkSettle: () -> Unit
 ) {
+    val financialColors = PhittoosColors.financial
     val canBulkSettle = eligibility == BulkSettlementEligibility.SAME_DIRECTION_LENT ||
         eligibility == BulkSettlementEligibility.SAME_DIRECTION_BORROWED
     val isMixed = eligibility == BulkSettlementEligibility.MIXED_DIRECTIONS
@@ -558,7 +551,10 @@ internal fun ActionRow(
         // "Add new transaction" button (functional)
         Button(
             onClick = onAddTransaction,
-            colors = ButtonDefaults.buttonColors(containerColor = Slate900),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .weight(1f)
@@ -577,8 +573,8 @@ internal fun ActionRow(
             enabled = canBulkSettle,
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = if (canBulkSettle) EmeraldGreenDark else Slate400,
-                disabledContentColor = Slate400
+                contentColor = if (canBulkSettle) financialColors.lentAccent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             ),
             modifier = Modifier
                 .weight(1f)
@@ -613,6 +609,7 @@ internal fun TimelineTransactionItem(
     onSettleClick: () -> Unit,
     onRepayClick: () -> Unit
 ) {
+    val financialColors = PhittoosColors.financial
     val isLent = tx.direction == TransactionDirection.LENT
     val isConfirmed = tx.status == TransactionStatus.CONFIRMED
     val dueInfo = tx.dueInfo
@@ -627,7 +624,7 @@ internal fun TimelineTransactionItem(
             .padding(vertical = 5.dp)
             .testTag("timeline_tx_${tx.id}"),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -644,13 +641,13 @@ internal fun TimelineTransactionItem(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(if (isLent) EmeraldGreenSurface else CoralOrangeSurface),
+                        .background(if (isLent) financialColors.lentContainer else financialColors.borrowedContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = if (isLent) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                         contentDescription = null,
-                        tint = if (isLent) EmeraldGreenDark else CoralOrangeDark,
+                        tint = if (isLent) financialColors.onLentContainer else financialColors.onBorrowedContainer,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -662,12 +659,12 @@ internal fun TimelineTransactionItem(
                         text = if (isLent) "You lent" else "You borrowed",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Slate900
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = Formatters.formatFullDate(tx.createdDate),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -676,7 +673,7 @@ internal fun TimelineTransactionItem(
                         text = Formatters.formatCurrency(tx.amount),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = if (isLent) EmeraldGreenDark else CoralOrangeDark
+                        color = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent
                     )
 
                     // Status Badge
@@ -684,7 +681,7 @@ internal fun TimelineTransactionItem(
                         isConfirmed -> {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = EmeraldGreenSurface,
+                                color = financialColors.lentContainer,
                                 modifier = Modifier.padding(top = 4.dp)
                             ) {
                                 Row(
@@ -694,7 +691,7 @@ internal fun TimelineTransactionItem(
                                     Icon(
                                         Icons.Default.CheckCircle,
                                         contentDescription = null,
-                                        tint = EmeraldGreenDark,
+                                        tint = financialColors.onLentContainer,
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
@@ -702,7 +699,7 @@ internal fun TimelineTransactionItem(
                                         text = "Settled",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = EmeraldGreenDark
+                                        color = financialColors.onLentContainer
                                     )
                                 }
                             }
@@ -736,7 +733,7 @@ internal fun TimelineTransactionItem(
                         isOverdue -> {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = Red100,
+                                color = MaterialTheme.colorScheme.errorContainer,
                                 modifier = Modifier.padding(top = 4.dp)
                             ) {
                                 Row(
@@ -746,7 +743,7 @@ internal fun TimelineTransactionItem(
                                     Icon(
                                         Icons.Default.ErrorOutline,
                                         contentDescription = null,
-                                        tint = Red600,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
@@ -754,7 +751,7 @@ internal fun TimelineTransactionItem(
                                         text = "Overdue",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Red600
+                                        color = MaterialTheme.colorScheme.onErrorContainer
                                     )
                                 }
                             }
@@ -762,7 +759,7 @@ internal fun TimelineTransactionItem(
                         else -> {
                             Surface(
                                 shape = RoundedCornerShape(6.dp),
-                                color = Slate100,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp)
                             ) {
                                 Row(
@@ -772,7 +769,7 @@ internal fun TimelineTransactionItem(
                                     Icon(
                                         Icons.Default.HourglassTop,
                                         contentDescription = null,
-                                        tint = Slate500,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Spacer(modifier = Modifier.width(3.dp))
@@ -780,7 +777,7 @@ internal fun TimelineTransactionItem(
                                         text = "Pending",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Slate700
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -794,13 +791,13 @@ internal fun TimelineTransactionItem(
                 Spacer(modifier = Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Slate100,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "Note: ${tx.note}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate700,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
@@ -811,7 +808,7 @@ internal fun TimelineTransactionItem(
                 Spacer(modifier = Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Slate100.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -824,18 +821,18 @@ internal fun TimelineTransactionItem(
                         Text(
                             text = "Original: ${Formatters.formatCurrency(tx.amount)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate600
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
                             text = if (isLent) "Paid back: ${Formatters.formatCurrency(effectivePaid)}" else "You paid: ${Formatters.formatCurrency(effectivePaid)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (isLent) EmeraldGreenDark else CoralOrangeDark,
+                            color = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = if (isLent) "Still pending: ${Formatters.formatCurrency(remaining)}" else "Still to pay: ${Formatters.formatCurrency(remaining)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate900,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -893,7 +890,7 @@ internal fun TimelineTransactionItem(
                                 Text(
                                     text = dueInfo.formattedStatus,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Red600,
+                                    color = MaterialTheme.colorScheme.error,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -909,7 +906,7 @@ internal fun TimelineTransactionItem(
                                 Text(
                                     text = dueInfo.formattedStatus,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Slate600,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Normal
                                 )
                             }
@@ -917,7 +914,7 @@ internal fun TimelineTransactionItem(
                                 Text(
                                     text = "No due date",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Slate400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -941,7 +938,7 @@ internal fun TimelineTransactionItem(
                                 text = if (isLent) stringResource(R.string.action_record_repayment) else stringResource(R.string.action_record_payment),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isLent) EmeraldGreenDark else CoralOrangeDark
+                                color = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent
                             )
                         }
 
@@ -959,7 +956,7 @@ internal fun TimelineTransactionItem(
                                 text = stringResource(R.string.action_settle_this),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Slate600
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -975,7 +972,7 @@ internal fun TimelineTransactionItem(
                     Text(
                         text = "Due ${DueDateHelper.formatDueDate(tx.dueDate)}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1002,7 +999,7 @@ internal fun IndividualSettlementDialog(
             Text(
                 text = stringResource(R.string.dialog_settle_single_title),
                 fontWeight = FontWeight.Bold,
-                color = Slate900
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -1019,7 +1016,7 @@ internal fun IndividualSettlementDialog(
                 Text(
                     text = bodyText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Slate700
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (hasPartialPayment) {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -1030,7 +1027,7 @@ internal fun IndividualSettlementDialog(
                             "Original: ${Formatters.formatCurrency(originalAmount)} (${Formatters.formatCurrency(alreadyPaid)} paid)"
                         },
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate500,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -1056,10 +1053,10 @@ internal fun IndividualSettlementDialog(
                     .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                     .testTag("button_cancel_settle_individual")
             ) {
-                Text(stringResource(R.string.dialog_settle_keep_pending), color = Slate700)
+                Text(stringResource(R.string.dialog_settle_keep_pending), color = MaterialTheme.colorScheme.onSurface)
             }
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp)
     )
 }
@@ -1072,6 +1069,7 @@ internal fun RepaymentDialog(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
+    val financialColors = PhittoosColors.financial
     val isLent = tx.direction == TransactionDirection.LENT
     val remaining = tx.effectiveRemainingAmount
     val originalAmount = tx.amount
@@ -1095,7 +1093,7 @@ internal fun RepaymentDialog(
             Text(
                 text = if (isLent) stringResource(R.string.dialog_repayment_lent_title) else stringResource(R.string.dialog_repayment_borrowed_title),
                 fontWeight = FontWeight.Bold,
-                color = Slate900
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -1113,7 +1111,7 @@ internal fun RepaymentDialog(
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Slate900
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -1127,7 +1125,7 @@ internal fun RepaymentDialog(
                             "You paid: ${Formatters.formatCurrency(alreadyPaid)}"
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate600
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                 }
@@ -1140,7 +1138,7 @@ internal fun RepaymentDialog(
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = if (isLent) EmeraldGreenDark else CoralOrangeDark
+                    color = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1169,8 +1167,8 @@ internal fun RepaymentDialog(
                         }
                     },
                     label = { Text(amountLabel) },
-                    placeholder = { Text("Enter amount") },
-                    prefix = { Text("₹ ", fontWeight = FontWeight.Bold) },
+                    placeholder = { Text("Enter amount", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
+                    prefix = { Text("₹ ", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     isError = errorMessage != null,
@@ -1183,6 +1181,14 @@ internal fun RepaymentDialog(
                             )
                         }
                     },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics {
@@ -1218,7 +1224,7 @@ internal fun RepaymentDialog(
                         Text(
                             text = stringResource(R.string.action_fill_remaining, Formatters.formatCurrency(remaining)),
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (isLent) EmeraldGreenDark else CoralOrangeDark
+                            color = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent
                         )
                     }
                 }
@@ -1238,7 +1244,8 @@ internal fun RepaymentDialog(
                 },
                 enabled = !isSubmitting && isValidAmount,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isLent) EmeraldGreen else CoralOrange
+                    containerColor = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent,
+                    contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -1256,10 +1263,10 @@ internal fun RepaymentDialog(
                     .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                     .testTag("button_cancel_record_repayment")
             ) {
-                Text(stringResource(R.string.action_cancel), color = Slate700)
+                Text(stringResource(R.string.action_cancel), color = MaterialTheme.colorScheme.onSurface)
             }
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp)
     )
 }
@@ -1281,7 +1288,7 @@ internal fun BulkSettlementDialog(
             Text(
                 text = stringResource(R.string.dialog_settle_bulk_title),
                 fontWeight = FontWeight.Bold,
-                color = Slate900
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -1298,7 +1305,7 @@ internal fun BulkSettlementDialog(
                 Text(
                     text = bodyText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Slate700
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -1322,10 +1329,16 @@ internal fun BulkSettlementDialog(
                     .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                     .testTag("button_cancel_settle_bulk")
             ) {
-                Text(stringResource(R.string.dialog_settle_keep_pending), color = Slate700)
+                Text(stringResource(R.string.dialog_settle_keep_pending), color = MaterialTheme.colorScheme.onSurface)
             }
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(20.dp)
     )
 }
+
+
+
+
+
+

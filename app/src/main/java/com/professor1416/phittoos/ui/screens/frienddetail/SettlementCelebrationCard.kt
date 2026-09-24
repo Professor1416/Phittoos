@@ -65,10 +65,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.professor1416.phittoos.R
-import com.professor1416.phittoos.ui.theme.EmeraldGreenDark
-import com.professor1416.phittoos.ui.theme.EmeraldGreenLight
-import com.professor1416.phittoos.ui.theme.Slate500
-import com.professor1416.phittoos.ui.theme.Slate700
+import com.professor1416.phittoos.ui.theme.PhittoosColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicLong
@@ -217,6 +214,8 @@ fun SettlementCelebrationDialog(
         dismissAction()
     }
 
+    val financialColors = PhittoosColors.financial
+
     Dialog(
         onDismissRequest = dismissAction,
         properties = DialogProperties(
@@ -266,7 +265,7 @@ fun SettlementCelebrationDialog(
                     },
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
@@ -285,7 +284,7 @@ fun SettlementCelebrationDialog(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = stringResource(R.string.celebration_dismiss_cd),
-                            tint = Slate500,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -301,7 +300,7 @@ fun SettlementCelebrationDialog(
                             modifier = Modifier
                                 .size(56.dp)
                                 .clip(CircleShape)
-                                .background(EmeraldGreenLight)
+                                .background(financialColors.lentContainer)
                                 .testTag("badge_celebration_checkmark"),
                             contentAlignment = Alignment.Center
                         ) {
@@ -323,7 +322,7 @@ fun SettlementCelebrationDialog(
                                 if (checkmarkProgress.value >= 1f) {
                                     drawPath(
                                         path = fullPath,
-                                        color = EmeraldGreenDark,
+                                        color = financialColors.lentAccent,
                                         style = Stroke(
                                             width = strokePx,
                                             cap = StrokeCap.Round,
@@ -338,7 +337,7 @@ fun SettlementCelebrationDialog(
                                     pathMeasure.getSegment(0f, length * checkmarkProgress.value, dst, true)
                                     drawPath(
                                         path = dst,
-                                        color = EmeraldGreenDark,
+                                        color = financialColors.lentAccent,
                                         style = Stroke(
                                             width = strokePx,
                                             cap = StrokeCap.Round,
@@ -356,7 +355,7 @@ fun SettlementCelebrationDialog(
                             text = introText,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
-                            color = Slate500,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.testTag("text_celebration_intro")
                         )
@@ -368,7 +367,7 @@ fun SettlementCelebrationDialog(
                             text = headlineText,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = EmeraldGreenDark,
+                            color = financialColors.lentAccent,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .testTag("text_celebration_headline")
@@ -385,7 +384,7 @@ fun SettlementCelebrationDialog(
                         Text(
                             text = supportText,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Slate700,
+                            color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center,
                             lineHeight = 20.sp,
                             modifier = Modifier

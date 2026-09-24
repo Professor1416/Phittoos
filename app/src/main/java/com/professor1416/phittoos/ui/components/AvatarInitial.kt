@@ -18,14 +18,14 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 
 private val AvatarColors = listOf(
-    Color(0xFF0D9488), // Teal
-    Color(0xFF3B82F6), // Blue
-    Color(0xFF8B5CF6), // Purple
-    Color(0xFFEC4899), // Pink
-    Color(0xFFF97316), // Orange
-    Color(0xFF10B981), // Green
-    Color(0xFF6366F1), // Indigo
-    Color(0xFF14B8A6)  // Cyan
+    Color(0xFF0F766E), // Teal 700
+    Color(0xFF1D4ED8), // Blue 700
+    Color(0xFF6D28D9), // Purple 700
+    Color(0xFFBE185D), // Pink 700
+    Color(0xFFC2410C), // Orange 700
+    Color(0xFF047857), // Green 700
+    Color(0xFF4338CA), // Indigo 700
+    Color(0xFF0369A1)  // Sky 700
 )
 
 @Composable

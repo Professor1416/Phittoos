@@ -94,22 +94,8 @@ import com.professor1416.phittoos.data.model.Friend
 import com.professor1416.phittoos.data.model.TransactionDirection
 import com.professor1416.phittoos.domain.DueDateHelper
 import com.professor1416.phittoos.ui.components.AvatarInitial
-import com.professor1416.phittoos.ui.theme.CoralOrange
-import com.professor1416.phittoos.ui.theme.CoralOrangeDark
-import com.professor1416.phittoos.ui.theme.CoralOrangeLight
-import com.professor1416.phittoos.ui.theme.CoralOrangeSurface
 import com.professor1416.phittoos.ui.theme.EmeraldGreen
-import com.professor1416.phittoos.ui.theme.EmeraldGreenDark
-import com.professor1416.phittoos.ui.theme.EmeraldGreenLight
-import com.professor1416.phittoos.ui.theme.EmeraldGreenSurface
-import com.professor1416.phittoos.ui.theme.Slate100
-import com.professor1416.phittoos.ui.theme.Slate200
-import com.professor1416.phittoos.ui.theme.Slate400
-import com.professor1416.phittoos.ui.theme.Slate500
-import com.professor1416.phittoos.ui.theme.Slate600
-import com.professor1416.phittoos.ui.theme.Slate700
-import com.professor1416.phittoos.ui.theme.Slate800
-import com.professor1416.phittoos.ui.theme.Slate900
+import com.professor1416.phittoos.ui.theme.PhittoosColors
 import com.professor1416.phittoos.ui.util.Formatters
 import com.professor1416.phittoos.ui.viewmodel.AddTransactionViewModel
 import java.util.Calendar
@@ -126,6 +112,7 @@ fun AddTransactionScreen(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
+    val financialColors = PhittoosColors.financial
 
     // Auto-focus amount field if friend is already selected (or after friend is chosen)
     LaunchedEffect(uiState.selectedFriend) {
@@ -149,7 +136,7 @@ fun AddTransactionScreen(
                     Text(
                         text = "Add Transaction",
                         fontWeight = FontWeight.Bold,
-                        color = Slate900
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 },
                 navigationIcon = {
@@ -160,17 +147,19 @@ fun AddTransactionScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Slate900
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         },
         bottomBar = {
             // One-tap Save Button
             Surface(
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 8.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -196,8 +185,10 @@ fun AddTransactionScreen(
                         enabled = isReady && !uiState.isSaving,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreen else CoralOrange,
-                            disabledContainerColor = Slate200
+                            containerColor = if (uiState.direction == TransactionDirection.LENT) financialColors.lentAccent else financialColors.borrowedAccent,
+                            contentColor = Color.White,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -208,7 +199,7 @@ fun AddTransactionScreen(
                             text = if (uiState.isSaving) "Saving..." else "Add transaction",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isReady) Color.White else Slate400
+                            color = if (isReady) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
                 }
@@ -226,7 +217,7 @@ fun AddTransactionScreen(
             val isAmountError = uiState.errorMessage == "Please enter a valid amount"
             if (uiState.errorMessage != null && !isAmountError) {
                 Surface(
-                    color = Color(0xFFFEE2E2),
+                    color = MaterialTheme.colorScheme.errorContainer,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -234,7 +225,7 @@ fun AddTransactionScreen(
                 ) {
                     Text(
                         text = uiState.errorMessage ?: "",
-                        color = Color(0xFFDC2626),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(12.dp)
@@ -245,7 +236,7 @@ fun AddTransactionScreen(
             // 1. SELECT FRIEND SECTION
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -254,7 +245,7 @@ fun AddTransactionScreen(
                         text = "1. SELECT FRIEND",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Slate500
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -265,7 +256,7 @@ fun AddTransactionScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Slate100)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -276,12 +267,12 @@ fun AddTransactionScreen(
                                     text = friend.name,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Slate900
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "Selected",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = EmeraldGreenDark,
+                                    color = financialColors.onLentContainer,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -292,7 +283,7 @@ fun AddTransactionScreen(
                                 Icon(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Change friend",
-                                    tint = Slate500
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -304,7 +295,7 @@ fun AddTransactionScreen(
                         Text(
                             text = "Recent Friends",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Slate400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(
@@ -323,8 +314,10 @@ fun AddTransactionScreen(
                                         AvatarInitial(name = friend.name, size = 20.dp)
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Slate900,
-                                        selectedLabelColor = Color.White
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     ),
                                     shape = RoundedCornerShape(12.dp)
                                 )
@@ -341,29 +334,29 @@ fun AddTransactionScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("input_friend_search"),
-                        placeholder = { Text("Search or type new friend's name", color = Slate400, fontSize = 14.sp) },
+                        placeholder = { Text("Search or type new friend's name", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), fontSize = 14.sp) },
                         leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = null, tint = Slate400)
+                            Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         },
                         trailingIcon = {
                             if (uiState.friendSearchQuery.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.updateFriendSearch("") }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Slate400)
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                         },
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Slate900,
-                            unfocusedTextColor = Slate900,
-                            cursorColor = EmeraldGreen,
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Slate200,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedPlaceholderColor = Slate400,
-                            unfocusedPlaceholderColor = Slate400
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     )
 
@@ -393,7 +386,7 @@ fun AddTransactionScreen(
                                         text = friend.name,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Slate800
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -412,13 +405,13 @@ fun AddTransactionScreen(
                                         modifier = Modifier
                                             .size(32.dp)
                                             .clip(CircleShape)
-                                            .background(EmeraldGreenLight),
+                                            .background(financialColors.lentContainer),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.PersonAdd,
                                             contentDescription = null,
-                                            tint = EmeraldGreenDark,
+                                            tint = financialColors.onLentContainer,
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -427,7 +420,7 @@ fun AddTransactionScreen(
                                         text = "+ Add \"$query\" as new friend",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = EmeraldGreenDark
+                                        color = financialColors.onLentContainer
                                     )
                                 }
                             }
@@ -441,7 +434,7 @@ fun AddTransactionScreen(
             // 2. TOGGLE: "I GAVE MONEY" / "I TOOK MONEY" (Large, thumb-friendly)
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -450,7 +443,7 @@ fun AddTransactionScreen(
                         text = "2. WHAT HAPPENED?",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Slate500
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -466,7 +459,7 @@ fun AddTransactionScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (isLent) EmeraldGreenDark else Slate100)
+                                .background(if (isLent) financialColors.lentAccent else MaterialTheme.colorScheme.surfaceVariant)
                                 .selectable(
                                     selected = isLent,
                                     onClick = { viewModel.setDirection(TransactionDirection.LENT) },
@@ -483,7 +476,7 @@ fun AddTransactionScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                                     contentDescription = null,
-                                    tint = if (isLent) Color.White else Slate500,
+                                    tint = if (isLent) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -491,7 +484,7 @@ fun AddTransactionScreen(
                                     text = stringResource(R.string.tx_direction_i_gave),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = if (isLent) Color.White else Slate700
+                                    color = if (isLent) Color.White else MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -502,7 +495,7 @@ fun AddTransactionScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (isBorrowed) CoralOrangeDark else Slate100)
+                                .background(if (isBorrowed) financialColors.borrowedAccent else MaterialTheme.colorScheme.surfaceVariant)
                                 .selectable(
                                     selected = isBorrowed,
                                     onClick = { viewModel.setDirection(TransactionDirection.BORROWED) },
@@ -519,7 +512,7 @@ fun AddTransactionScreen(
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.TrendingDown,
                                     contentDescription = null,
-                                    tint = if (isBorrowed) Color.White else Slate500,
+                                    tint = if (isBorrowed) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -527,7 +520,7 @@ fun AddTransactionScreen(
                                     text = stringResource(R.string.tx_direction_i_took),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = if (isBorrowed) Color.White else Slate700
+                                    color = if (isBorrowed) Color.White else MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -545,7 +538,7 @@ fun AddTransactionScreen(
                     Text(
                         text = explanationText,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate700,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
@@ -557,7 +550,7 @@ fun AddTransactionScreen(
             // 3. AMOUNT FIELD (Numeric keypad auto-opening)
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -566,7 +559,7 @@ fun AddTransactionScreen(
                         text = "3. AMOUNT",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Slate500
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -578,7 +571,7 @@ fun AddTransactionScreen(
                             text = "₹",
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (uiState.direction == TransactionDirection.LENT) EmeraldGreenDark else CoralOrangeDark,
+                            color = if (uiState.direction == TransactionDirection.LENT) financialColors.lentAccent else financialColors.borrowedAccent,
                             modifier = Modifier
                                 .padding(end = 8.dp)
                                 .clearAndSetSemantics { }
@@ -592,7 +585,7 @@ fun AddTransactionScreen(
                                 .focusRequester(focusRequester)
                                 .testTag("input_amount"),
                             label = { Text(stringResource(R.string.tx_amount_label)) },
-                            placeholder = { Text("0", fontSize = 32.sp, color = Slate400) },
+                            placeholder = { Text("0", fontSize = 32.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
                             isError = isAmountError,
                             supportingText = if (isAmountError) {
                                 {
@@ -605,7 +598,7 @@ fun AddTransactionScreen(
                             } else null,
                             textStyle = MaterialTheme.typography.headlineLarge.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = Slate900,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 32.sp
                             ),
                             singleLine = true,
@@ -615,16 +608,16 @@ fun AddTransactionScreen(
                             ),
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Slate900,
-                                unfocusedTextColor = Slate900,
-                                cursorColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreenDark else CoralOrangeDark,
-                                focusedBorderColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreenDark else CoralOrangeDark,
-                                unfocusedBorderColor = Slate200,
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                focusedPlaceholderColor = Slate400,
-                                unfocusedPlaceholderColor = Slate400,
-                                focusedLabelColor = if (uiState.direction == TransactionDirection.LENT) EmeraldGreenDark else CoralOrangeDark,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                cursorColor = if (uiState.direction == TransactionDirection.LENT) financialColors.lentAccent else financialColors.borrowedAccent,
+                                focusedBorderColor = if (uiState.direction == TransactionDirection.LENT) financialColors.lentAccent else financialColors.borrowedAccent,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                focusedLabelColor = if (uiState.direction == TransactionDirection.LENT) financialColors.lentAccent else financialColors.borrowedAccent,
                                 errorBorderColor = MaterialTheme.colorScheme.error,
                                 errorLabelColor = MaterialTheme.colorScheme.error
                             )
@@ -648,7 +641,7 @@ fun AddTransactionScreen(
                                     viewModel.setAmount(next.toInt().toString())
                                 },
                                 shape = RoundedCornerShape(12.dp),
-                                color = Slate100,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier
                                     .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                                     .testTag("chip_amount_$quickAmt")
@@ -663,7 +656,7 @@ fun AddTransactionScreen(
                                         text = "+₹$quickAmt",
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Slate700
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -677,7 +670,7 @@ fun AddTransactionScreen(
             // 4. OPTIONAL NOTE FIELD
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -686,7 +679,7 @@ fun AddTransactionScreen(
                         text = "4. NOTE (OPTIONAL)",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Slate500
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -696,19 +689,19 @@ fun AddTransactionScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("input_note"),
-                        placeholder = { Text("What's this for? (e.g. Dinner, cab, grocery)", color = Slate400, fontSize = 14.sp) },
+                        placeholder = { Text("What's this for? (e.g. Dinner, cab, grocery)", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), fontSize = 14.sp) },
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Slate900,
-                            unfocusedTextColor = Slate900,
-                            cursorColor = EmeraldGreen,
-                            focusedBorderColor = EmeraldGreen,
-                            unfocusedBorderColor = Slate200,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedPlaceholderColor = Slate400,
-                            unfocusedPlaceholderColor = Slate400
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     )
                 }
@@ -719,7 +712,7 @@ fun AddTransactionScreen(
             // 5. OPTIONAL DUE DATE PICKER (Defaults to "no due date")
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -728,7 +721,7 @@ fun AddTransactionScreen(
                         text = "5. DUE DATE (OPTIONAL)",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Slate500
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -770,13 +763,13 @@ fun AddTransactionScreen(
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = Slate100,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier.testTag("chip_no_due_date")
                             ) {
                                 Text(
                                     text = "No due date",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Slate600,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                                 )
@@ -791,13 +784,13 @@ fun AddTransactionScreen(
                                     Icons.Default.CalendarToday,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = Slate700
+                                    tint = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Pick date",
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Slate800
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -811,11 +804,11 @@ fun AddTransactionScreen(
                                 onClick = { showDatePicker() },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = if (isPast) Color(0xFFFEE2E2) else EmeraldGreenSurface
+                                    containerColor = if (isPast) MaterialTheme.colorScheme.errorContainer else financialColors.lentContainer
                                 ),
                                 border = BorderStroke(
                                     1.dp,
-                                    if (isPast) Color(0xFFDC2626) else EmeraldGreen
+                                    if (isPast) MaterialTheme.colorScheme.error else financialColors.lentAccent
                                 ),
                                 modifier = Modifier.testTag("button_pick_due_date")
                             ) {
@@ -823,13 +816,13 @@ fun AddTransactionScreen(
                                     Icons.Default.CalendarToday,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = if (isPast) Color(0xFFDC2626) else EmeraldGreenDark
+                                    tint = if (isPast) MaterialTheme.colorScheme.onErrorContainer else financialColors.onLentContainer
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = Formatters.formatFullDate(uiState.dueDate),
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isPast) Color(0xFFDC2626) else EmeraldGreenDark
+                                    color = if (isPast) MaterialTheme.colorScheme.onErrorContainer else financialColors.onLentContainer
                                 )
                             }
 
@@ -842,12 +835,12 @@ fun AddTransactionScreen(
                                     Icons.Default.Close,
                                     contentDescription = "Remove due date",
                                     modifier = Modifier.size(16.dp),
-                                    tint = Slate500
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = "Remove",
-                                    color = Slate600,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.Medium
                                 )
                             }
@@ -858,7 +851,7 @@ fun AddTransactionScreen(
                             Text(
                                 text = "Due date cannot be in the past.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFFDC2626),
+                                color = MaterialTheme.colorScheme.error,
                                 fontWeight = FontWeight.Medium
                             )
                         }
