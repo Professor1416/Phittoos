@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
@@ -38,7 +37,6 @@ import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import com.professor1416.phittoos.ui.components.DashboardInsightsCard
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,9 +50,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import com.professor1416.phittoos.R
-import com.professor1416.phittoos.domain.ReliabilityLevel
-import com.professor1416.phittoos.ui.components.ReliabilityPill
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,41 +66,32 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.professor1416.phittoos.R
 import com.professor1416.phittoos.data.model.FriendWithBalance
 import com.professor1416.phittoos.data.model.TransactionDirection
 import com.professor1416.phittoos.data.model.TransactionStatus
 import com.professor1416.phittoos.data.model.TransactionWithFriend
+import com.professor1416.phittoos.domain.ReliabilityLevel
 import com.professor1416.phittoos.ui.components.AvatarInitial
-import com.professor1416.phittoos.ui.theme.CoralOrange
-import com.professor1416.phittoos.ui.theme.CoralOrangeDark
-import com.professor1416.phittoos.ui.theme.CoralOrangeSurface
+import com.professor1416.phittoos.ui.components.ReliabilityPill
 import com.professor1416.phittoos.ui.theme.EmeraldGreen
 import com.professor1416.phittoos.ui.theme.EmeraldGreenDark
 import com.professor1416.phittoos.ui.theme.EmeraldGreenSurface
-import com.professor1416.phittoos.ui.theme.Slate100
-import com.professor1416.phittoos.ui.theme.Slate200
-import com.professor1416.phittoos.ui.theme.Slate400
-import com.professor1416.phittoos.ui.theme.Slate500
-import com.professor1416.phittoos.ui.theme.Slate600
-import com.professor1416.phittoos.ui.theme.Slate700
-import com.professor1416.phittoos.ui.theme.Slate800
-import com.professor1416.phittoos.ui.theme.Slate900
+import com.professor1416.phittoos.ui.theme.PhittoosColors
 import com.professor1416.phittoos.ui.util.Formatters
-import com.professor1416.phittoos.ui.viewmodel.HomeUiState
 import com.professor1416.phittoos.ui.viewmodel.HomeViewModel
-import androidx.compose.ui.semantics.semantics
 
 @Composable
 fun HomeScreen(
@@ -159,15 +145,6 @@ fun HomeScreen(
                 )
             }
 
-            // Dashboard Insights Card (Lent vs. Borrowed & 30-Day Spending Trends)
-            if (uiState.friends.isNotEmpty() || uiState.dashboardInsights.has30DayActivity) {
-                item {
-                    DashboardInsightsCard(
-                        insights = uiState.dashboardInsights
-                    )
-                }
-            }
-
             // Search / Filter Bar for friends
             item {
                 SearchAndFilterBar(
@@ -199,7 +176,7 @@ fun HomeScreen(
                         text = "FRIENDS (${uiState.friends.size})",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Slate600,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
                 }
@@ -223,7 +200,7 @@ fun HomeScreen(
                         text = "RECENT ACTIVITY",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Slate600,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
                     )
                 }
@@ -269,16 +246,16 @@ private fun HomeHeader(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = androidx.compose.ui.res.stringResource(id = com.professor1416.phittoos.R.string.app_name),
+                text = stringResource(id = R.string.app_name),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Black,
-                color = Slate900,
+                color = MaterialTheme.colorScheme.onBackground,
                 letterSpacing = (-0.5).sp
             )
             Text(
-                text = androidx.compose.ui.res.stringResource(id = com.professor1416.phittoos.R.string.tagline),
+                text = stringResource(id = R.string.tagline),
                 style = MaterialTheme.typography.bodySmall,
-                color = Slate600,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -294,13 +271,13 @@ private fun HomeHeader(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Slate100)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .testTag("btn_activity")
             ) {
                 Icon(
                     imageVector = Icons.Default.History,
                     contentDescription = "Activity History",
-                    tint = Slate800,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -310,13 +287,13 @@ private fun HomeHeader(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Slate100)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .testTag("btn_settings")
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "Settings",
-                    tint = Slate800,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -342,7 +319,7 @@ private fun HomeHeader(
                             text = userName,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Slate800
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -355,7 +332,7 @@ private fun HomeHeader(
 private fun SummaryBox(
     title: String,
     amount: Double,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     tintColor: Color,
     backgroundColor: Color,
     modifier: Modifier = Modifier
@@ -401,13 +378,15 @@ private fun TopSummaryCard(
     netPosition: Double,
     openTransactionsCount: Int = 0
 ) {
+    val financialColors = PhittoosColors.financial
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .testTag("top_summary_card"),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         androidx.compose.foundation.layout.BoxWithConstraints(
@@ -426,16 +405,16 @@ private fun TopSummaryCard(
                             title = "You'll get back",
                             amount = youWillGetBack,
                             icon = Icons.AutoMirrored.Filled.TrendingUp,
-                            tintColor = EmeraldGreenDark,
-                            backgroundColor = EmeraldGreenSurface,
+                            tintColor = financialColors.onLentContainer,
+                            backgroundColor = financialColors.lentContainer,
                             modifier = Modifier.fillMaxWidth()
                         )
                         SummaryBox(
                             title = "You owe",
                             amount = youOwe,
                             icon = Icons.AutoMirrored.Filled.TrendingDown,
-                            tintColor = CoralOrangeDark,
-                            backgroundColor = CoralOrangeSurface,
+                            tintColor = financialColors.onBorrowedContainer,
+                            backgroundColor = financialColors.borrowedContainer,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -448,23 +427,23 @@ private fun TopSummaryCard(
                             title = "You'll get back",
                             amount = youWillGetBack,
                             icon = Icons.AutoMirrored.Filled.TrendingUp,
-                            tintColor = EmeraldGreenDark,
-                            backgroundColor = EmeraldGreenSurface,
+                            tintColor = financialColors.onLentContainer,
+                            backgroundColor = financialColors.lentContainer,
                             modifier = Modifier.weight(1f)
                         )
                         SummaryBox(
                             title = "You owe",
                             amount = youOwe,
                             icon = Icons.AutoMirrored.Filled.TrendingDown,
-                            tintColor = CoralOrangeDark,
-                            backgroundColor = CoralOrangeSurface,
+                            tintColor = financialColors.onBorrowedContainer,
+                            backgroundColor = financialColors.borrowedContainer,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = Slate200.copy(alpha = 0.6f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                 Spacer(modifier = Modifier.height(14.dp))
 
                 val netText = when {
@@ -475,9 +454,9 @@ private fun TopSummaryCard(
                 }
 
                 val netColor = when {
-                    netPosition > 0 -> EmeraldGreenDark
-                    netPosition < 0 -> CoralOrangeDark
-                    else -> Slate700
+                    netPosition > 0 -> financialColors.lentAccent
+                    netPosition < 0 -> financialColors.borrowedAccent
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
 
                 if (isNarrow) {
@@ -488,7 +467,7 @@ private fun TopSummaryCard(
                         Text(
                             text = "Overall",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Slate600,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
@@ -508,7 +487,7 @@ private fun TopSummaryCard(
                         Text(
                             text = "Overall",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Slate600,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
@@ -543,12 +522,17 @@ private fun SearchAndFilterBar(
             modifier = Modifier
                 .weight(1f)
                 .testTag("search_friends_input"),
-            placeholder = { Text("Search friends...", color = Slate400) },
+            placeholder = {
+                Text(
+                    "Search friends...",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = "Search",
-                    tint = Slate400
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             trailingIcon = {
@@ -557,7 +541,7 @@ private fun SearchAndFilterBar(
                         Icon(
                             imageVector = Icons.Default.Clear,
                             contentDescription = "Clear search",
-                            tint = Slate500
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -565,15 +549,15 @@ private fun SearchAndFilterBar(
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Slate900,
-                unfocusedTextColor = Slate900,
-                cursorColor = EmeraldGreen,
-                focusedBorderColor = EmeraldGreen,
-                unfocusedBorderColor = Slate200,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedPlaceholderColor = Slate400,
-                unfocusedPlaceholderColor = Slate400
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
         )
 
@@ -584,13 +568,13 @@ private fun SearchAndFilterBar(
             modifier = Modifier
                 .size(52.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .testTag("button_quick_add_friend")
         ) {
             Icon(
                 imageVector = Icons.Default.PersonAdd,
                 contentDescription = "Add Friend",
-                tint = Slate800
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -601,7 +585,9 @@ private fun FriendBalanceColumn(
     friendWithBalance: FriendWithBalance,
     horizontalAlignment: Alignment.Horizontal
 ) {
+    val financialColors = PhittoosColors.financial
     val net = friendWithBalance.netBalance
+
     Column(
         horizontalAlignment = horizontalAlignment
     ) {
@@ -610,28 +596,28 @@ private fun FriendBalanceColumn(
                 Text(
                     text = "owes you",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Slate600,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = Formatters.formatCurrency(net),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = EmeraldGreenDark
+                    color = financialColors.lentAccent
                 )
             }
             net < 0 -> {
                 Text(
                     text = "you owe",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Slate600,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = Formatters.formatCurrency(kotlin.math.abs(net)),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = CoralOrangeDark
+                    color = financialColors.borrowedAccent
                 )
             }
             friendWithBalance.openTransactionsCount > 0 -> {
@@ -639,7 +625,7 @@ private fun FriendBalanceColumn(
                     text = "Net ₹0",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Slate700
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             else -> {
@@ -647,7 +633,7 @@ private fun FriendBalanceColumn(
                     text = "All settled",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Slate600
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -656,7 +642,7 @@ private fun FriendBalanceColumn(
             Text(
                 text = "${friendWithBalance.overdueTransactionsCount} overdue",
                 style = MaterialTheme.typography.labelSmall,
-                color = CoralOrangeDark,
+                color = financialColors.overdueAccent,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -676,14 +662,14 @@ private fun FriendRowItem(
             .semantics(mergeDescendants = true) {}
             .testTag("friend_row_${friendWithBalance.friend.id}"),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         androidx.compose.foundation.layout.BoxWithConstraints(
             modifier = Modifier.fillMaxWidth()
         ) {
             val isNarrow = maxWidth < 340.dp
-            
+
             if (isNarrow) {
                 Row(
                     modifier = Modifier
@@ -708,7 +694,7 @@ private fun FriendRowItem(
                                 text = friendWithBalance.friend.name,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Slate900,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
 
                             if (friendWithBalance.reliabilityInfo.level != ReliabilityLevel.NEW) {
@@ -726,7 +712,7 @@ private fun FriendRowItem(
                                 "No transactions yet"
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate600
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Spacer(modifier = Modifier.height(6.dp))
@@ -741,7 +727,7 @@ private fun FriendRowItem(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = Slate200,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -769,7 +755,7 @@ private fun FriendRowItem(
                                 text = friendWithBalance.friend.name,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Slate900,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false)
@@ -790,7 +776,7 @@ private fun FriendRowItem(
                                 "No transactions yet"
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate600
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -805,7 +791,7 @@ private fun FriendRowItem(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
-                        tint = Slate200,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -858,7 +844,7 @@ internal fun EmptyFriendsState(
                 Text(
                     text = stringResource(R.string.empty_search_subtitle, searchQuery),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Slate600,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
 
@@ -886,7 +872,7 @@ internal fun EmptyFriendsState(
                 ) {
                     Text(
                         text = stringResource(R.string.empty_search_clear),
-                        color = Slate600,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -917,7 +903,7 @@ internal fun EmptyFriendsState(
                 Text(
                     text = stringResource(R.string.empty_home_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Slate600,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp,
                     modifier = Modifier.padding(horizontal = 8.dp)
@@ -935,8 +921,8 @@ internal fun EmptyFriendsState(
                         title = stringResource(R.string.empty_home_step_1_title),
                         description = stringResource(R.string.empty_home_step_1_desc),
                         icon = Icons.Default.PersonAdd,
-                        accentColor = EmeraldGreenDark,
-                        badgeBg = EmeraldGreenSurface
+                        accentColor = PhittoosColors.financial.onLentContainer,
+                        badgeBg = PhittoosColors.financial.lentContainer
                     )
 
                     EmptyGuideStepItem(
@@ -944,8 +930,8 @@ internal fun EmptyFriendsState(
                         title = stringResource(R.string.empty_home_step_2_title),
                         description = stringResource(R.string.empty_home_step_2_desc),
                         icon = Icons.Default.Payments,
-                        accentColor = Slate800,
-                        badgeBg = Slate100
+                        accentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        badgeBg = MaterialTheme.colorScheme.primaryContainer
                     )
 
                     EmptyGuideStepItem(
@@ -953,8 +939,8 @@ internal fun EmptyFriendsState(
                         title = stringResource(R.string.empty_home_step_3_title),
                         description = stringResource(R.string.empty_home_step_3_desc),
                         icon = Icons.Default.Celebration,
-                        accentColor = CoralOrangeDark,
-                        badgeBg = CoralOrangeSurface
+                        accentColor = PhittoosColors.financial.onBorrowedContainer,
+                        badgeBg = PhittoosColors.financial.borrowedContainer
                     )
                 }
 
@@ -1019,7 +1005,7 @@ private fun EmptyGuideStepItem(
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.background,
+        color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -1057,7 +1043,7 @@ private fun EmptyGuideStepItem(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate600
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -1066,19 +1052,20 @@ private fun EmptyGuideStepItem(
 
 @Composable
 private fun EmptyHomeIllustration(modifier: Modifier = Modifier) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val outlineColor = MaterialTheme.colorScheme.outline
+    val onSurfaceVar = MaterialTheme.colorScheme.onSurfaceVariant
+    val mintSurface = EmeraldGreenSurface
+    val emerald = EmeraldGreen
+    val emeraldDark = EmeraldGreenDark
+    val goldCoin = Color(0xFFFBBF24)
+    val goldCoinDark = Color(0xFFD97706)
+
     Box(
         modifier = modifier
             .size(width = 190.dp, height = 135.dp),
         contentAlignment = Alignment.Center
     ) {
-        val mintSurface = EmeraldGreenSurface
-        val emerald = EmeraldGreen
-        val emeraldDark = EmeraldGreenDark
-        val goldCoin = Color(0xFFFBBF24)
-        val goldCoinDark = Color(0xFFD97706)
-        val slateLine = Slate200
-        val cardBorder = Slate200
-
         Canvas(modifier = Modifier.fillMaxSize()) {
             val cx = size.width / 2f
             val cy = size.height / 2f
@@ -1106,13 +1093,13 @@ private fun EmptyHomeIllustration(modifier: Modifier = Modifier) {
 
             // Card shadow/background
             drawRoundRect(
-                color = Color.White,
+                color = surfaceColor,
                 topLeft = Offset(cardLeft, cardTop),
                 size = Size(cardW, cardH),
                 cornerRadius = CornerRadius(14.dp.toPx(), 14.dp.toPx())
             )
             drawRoundRect(
-                color = cardBorder,
+                color = outlineColor.copy(alpha = 0.4f),
                 topLeft = Offset(cardLeft, cardTop),
                 size = Size(cardW, cardH),
                 cornerRadius = CornerRadius(14.dp.toPx(), 14.dp.toPx()),
@@ -1139,10 +1126,12 @@ private fun EmptyHomeIllustration(modifier: Modifier = Modifier) {
             val lineY2 = cardTop + 42.dp.toPx()
             val lineY3 = cardTop + 56.dp.toPx()
 
+            val lineCol = outlineColor.copy(alpha = 0.4f)
+
             // Line 1: Green bullet + line
             drawCircle(color = emeraldDark, radius = 2.5.dp.toPx(), center = Offset(lineLeft - 4.dp.toPx(), lineY1))
             drawLine(
-                color = slateLine,
+                color = lineCol,
                 start = Offset(lineLeft + 4.dp.toPx(), lineY1),
                 end = Offset(cardLeft + cardW - 14.dp.toPx(), lineY1),
                 strokeWidth = 3.dp.toPx(),
@@ -1150,9 +1139,9 @@ private fun EmptyHomeIllustration(modifier: Modifier = Modifier) {
             )
 
             // Line 2: Blue bullet + line
-            drawCircle(color = Slate600, radius = 2.5.dp.toPx(), center = Offset(lineLeft - 4.dp.toPx(), lineY2))
+            drawCircle(color = onSurfaceVar, radius = 2.5.dp.toPx(), center = Offset(lineLeft - 4.dp.toPx(), lineY2))
             drawLine(
-                color = slateLine,
+                color = lineCol,
                 start = Offset(lineLeft + 4.dp.toPx(), lineY2),
                 end = Offset(cardLeft + cardW - 24.dp.toPx(), lineY2),
                 strokeWidth = 3.dp.toPx(),
@@ -1162,7 +1151,7 @@ private fun EmptyHomeIllustration(modifier: Modifier = Modifier) {
             // Line 3: Soft bullet + line
             drawCircle(color = emerald, radius = 2.5.dp.toPx(), center = Offset(lineLeft - 4.dp.toPx(), lineY3))
             drawLine(
-                color = slateLine.copy(alpha = 0.7f),
+                color = lineCol.copy(alpha = 0.25f),
                 start = Offset(lineLeft + 4.dp.toPx(), lineY3),
                 end = Offset(cardLeft + cardW - 36.dp.toPx(), lineY3),
                 strokeWidth = 3.dp.toPx(),
@@ -1236,17 +1225,18 @@ private fun EmptyHomeIllustration(modifier: Modifier = Modifier) {
 
 @Composable
 private fun EmptySearchIllustration(modifier: Modifier = Modifier) {
+    val financialColors = PhittoosColors.financial
     Box(
         modifier = modifier
             .size(90.dp)
             .clip(CircleShape)
-            .background(EmeraldGreenSurface),
+            .background(financialColors.lentContainer),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.SearchOff,
             contentDescription = null,
-            tint = EmeraldGreenDark,
+            tint = financialColors.onLentContainer,
             modifier = Modifier.size(44.dp)
         )
     }
@@ -1257,6 +1247,7 @@ private fun RecentActivityRow(
     item: TransactionWithFriend,
     onClick: () -> Unit
 ) {
+    val financialColors = PhittoosColors.financial
     val tx = item.transaction
     val isLent = tx.direction == TransactionDirection.LENT
 
@@ -1268,7 +1259,7 @@ private fun RecentActivityRow(
             .semantics(mergeDescendants = true) {}
             .testTag("recent_activity_row_${tx.id}"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
@@ -1281,13 +1272,13 @@ private fun RecentActivityRow(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(if (isLent) EmeraldGreenSurface else CoralOrangeSurface),
+                    .background(if (isLent) financialColors.lentContainer else financialColors.borrowedContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (isLent) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                     contentDescription = null,
-                    tint = if (isLent) EmeraldGreenDark else CoralOrangeDark,
+                    tint = if (isLent) financialColors.onLentContainer else financialColors.onBorrowedContainer,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -1299,7 +1290,7 @@ private fun RecentActivityRow(
                     text = if (isLent) "Lent to ${item.friendName}" else "Borrowed from ${item.friendName}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Slate900,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1307,7 +1298,7 @@ private fun RecentActivityRow(
                     Text(
                         text = tx.note,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate600,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1315,7 +1306,7 @@ private fun RecentActivityRow(
                 Text(
                     text = Formatters.formatDate(tx.createdDate),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Slate600
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -1326,7 +1317,7 @@ private fun RecentActivityRow(
                     text = Formatters.formatCurrency(tx.amount),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isLent) EmeraldGreenDark else CoralOrangeDark
+                    color = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent
                 )
 
                 if (tx.status == TransactionStatus.CONFIRMED) {
@@ -1341,7 +1332,7 @@ private fun RecentActivityRow(
                         Text(
                             text = "Settled",
                             style = MaterialTheme.typography.labelSmall,
-                            color = EmeraldGreenDark,
+                            color = financialColors.onSettledContainer,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -1350,14 +1341,14 @@ private fun RecentActivityRow(
                         Icon(
                             Icons.Default.HourglassTop,
                             contentDescription = null,
-                            tint = Slate400,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = "Open",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Slate600
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -1375,13 +1366,13 @@ private fun QuickAddFriendDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
                 "Add Friend",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Slate900
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
@@ -1389,7 +1380,7 @@ private fun QuickAddFriendDialog(
                 Text(
                     "Enter friend's name to track loans and borrowings.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Slate500
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
@@ -1402,17 +1393,17 @@ private fun QuickAddFriendDialog(
                         .fillMaxWidth()
                         .testTag("dialog_friend_name_input"),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Slate900,
-                        unfocusedTextColor = Slate900,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                         cursorColor = EmeraldGreen,
                         focusedBorderColor = EmeraldGreen,
-                        unfocusedBorderColor = Slate200,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                         focusedLabelColor = EmeraldGreen,
-                        unfocusedLabelColor = Slate500,
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedPlaceholderColor = Slate400,
-                        unfocusedPlaceholderColor = Slate400
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 )
             }
@@ -1431,7 +1422,7 @@ private fun QuickAddFriendDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Slate500)
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     )

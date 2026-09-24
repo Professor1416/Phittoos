@@ -91,7 +91,7 @@ class SettingsAccessibilityTest {
 
         // 1. Verify that the Reminder Row has Role.Switch and is displayed
         val reminderRow = composeTestRule.onNodeWithTag("row_repayment_reminders")
-        reminderRow.assertIsDisplayed()
+        reminderRow.performScrollTo().assertIsDisplayed()
 
         // Verify minimum 48dp touch target
         reminderRow.assertWidthIsAtLeast(48.dp)

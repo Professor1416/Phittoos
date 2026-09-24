@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.sp
 import com.professor1416.phittoos.R
 import com.professor1416.phittoos.data.preferences.UserPreferences
 import com.professor1416.phittoos.ui.theme.EmeraldGreen
-import com.professor1416.phittoos.ui.theme.Slate900
 
 @Composable
 fun OnboardingScreen(
@@ -78,10 +77,7 @@ fun OnboardingScreen(
     var nameError by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
 
-    fun completeAndGoHome(fallbackName: String = "You") {
-        if (userPreferences.userName.isBlank()) {
-            userPreferences.userName = fallbackName
-        }
+    fun completeAndGoHome() {
         userPreferences.hasCompletedOnboarding = true
         onCompleteOnboarding()
     }
@@ -94,7 +90,7 @@ fun OnboardingScreen(
         }
         nameError = null
         userPreferences.userName = trimmed
-        completeAndGoHome(trimmed)
+        completeAndGoHome()
     }
 
     Scaffold(
@@ -171,7 +167,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         TextButton(
-                            onClick = { completeAndGoHome("You") },
+                            onClick = { completeAndGoHome() },
                             modifier = Modifier.testTag("button_intro_skip")
                         ) {
                             Text(
@@ -215,7 +211,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         TextButton(
-                            onClick = { completeAndGoHome("You") },
+                            onClick = { completeAndGoHome() },
                             modifier = Modifier.testTag("button_name_skip")
                         ) {
                             Text(
@@ -280,7 +276,8 @@ private fun OnboardingIntroStep() {
             modifier = Modifier
                 .size(96.dp)
                 .clip(CircleShape)
-                .background(Slate900),
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             androidx.compose.foundation.Image(

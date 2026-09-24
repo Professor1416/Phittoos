@@ -276,7 +276,7 @@ class OnboardingAccessibilityTest {
 
         assertTrue(completed)
         assertTrue(userPreferences.hasCompletedOnboarding)
-        assertEquals("You", userPreferences.userName)
+        assertEquals("", userPreferences.userName)
     }
 
     @Test
@@ -301,6 +301,6 @@ class OnboardingAccessibilityTest {
 
         assertTrue(completed)
         assertTrue(userPreferences.hasCompletedOnboarding)
-        assertEquals("You", userPreferences.userName)
+        assertEquals("", userPreferences.userName)
     }
 }

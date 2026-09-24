@@ -148,13 +148,13 @@
 
     <!-- Empty State Guide -->
     <string name="empty_home_title">Ready to start tracking?</string>
-    <string name="empty_home_subtitle">Keep informal loans and shared expenses with friends clean, organized, and stress-free.</string>
+    <string name="empty_home_subtitle">Keep money lent and borrowed with friends clear and easy to settle.</string>
     <string name="empty_home_step_1_title">Add Friends</string>
-    <string name="empty_home_step_1_desc">Add the people you frequently share money with</string>
+    <string name="empty_home_step_1_desc">Add friends you lend to or borrow from</string>
     <string name="empty_home_step_2_title">Log Amounts</string>
     <string name="empty_home_step_2_desc">Record who lent or borrowed in one quick tap</string>
     <string name="empty_home_step_3_title">Settle &amp; Celebrate</string>
-    <string name="empty_home_step_3_desc">Smart reminders ensure no awkward conversations</string>
+    <string name="empty_home_step_3_desc">Track repayments and settle up with no awkwardness</string>
     <string name="empty_home_cta_primary">Record First Entry</string>
     <string name="empty_home_cta_secondary">Quick Add Friend</string>
     <string name="empty_search_title">No friends found</string>

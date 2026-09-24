@@ -7,8 +7,6 @@ import com.professor1416.phittoos.data.model.FriendWithBalance
 import com.professor1416.phittoos.data.model.TransactionWithFriend
 import com.professor1416.phittoos.data.preferences.UserPreferences
 import com.professor1416.phittoos.data.repository.PhittoosRepository
-import com.professor1416.phittoos.domain.DashboardInsights
-import com.professor1416.phittoos.domain.DashboardInsightsEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +22,6 @@ data class HomeUiState(
     val openTransactionsCount: Int = 0,
     val friends: List<FriendWithBalance> = emptyList(),
     val recentActivity: List<TransactionWithFriend> = emptyList(),
-    val dashboardInsights: DashboardInsights = DashboardInsights(),
     val searchQuery: String = "",
     val userName: String = "",
     val isLoading: Boolean = false
@@ -42,9 +39,8 @@ class HomeViewModel(
         repository.dashboardTotals,
         repository.friendsWithBalance,
         repository.recentActivity,
-        repository.allTransactions,
         _searchQuery
-    ) { totals, friendsList, recent, allTxs, query ->
+    ) { totals, friendsList, recent, query ->
         val filteredAndSortedFriends = friendsList
             .filter {
                 query.isBlank() || it.friend.name.contains(query, ignoreCase = true)
@@ -56,8 +52,6 @@ class HomeViewModel(
                     .thenBy { it.friend.name.lowercase() }
             )
 
-        val insights = DashboardInsightsEngine.compute(allTxs)
-
         HomeUiState(
             youWillGetBack = totals.youWillGetBack,
             youOwe = totals.youOwe,
@@ -65,7 +59,6 @@ class HomeViewModel(
             openTransactionsCount = totals.openTransactionsCount,
             friends = filteredAndSortedFriends,
             recentActivity = recent,
-            dashboardInsights = insights,
             searchQuery = query,
             userName = preferences.userName,
             isLoading = false

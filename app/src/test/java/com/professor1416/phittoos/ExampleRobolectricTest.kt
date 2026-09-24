@@ -116,8 +116,8 @@ class ExampleRobolectricTest {
 
     assertEquals(com.professor1416.phittoos.ui.theme.Slate900, lightOnSurface)
     assertEquals(androidx.compose.ui.graphics.Color.White, lightSurface)
-    assertEquals(com.professor1416.phittoos.ui.theme.Slate900, darkOnSurface)
-    assertEquals(androidx.compose.ui.graphics.Color.White, darkSurface)
+    assertEquals(androidx.compose.ui.graphics.Color.White, darkOnSurface)
+    assertEquals(com.professor1416.phittoos.ui.theme.Slate800, darkSurface)
   }
 
   @Test
