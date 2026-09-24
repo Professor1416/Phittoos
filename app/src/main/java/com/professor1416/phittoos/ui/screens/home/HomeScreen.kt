@@ -1,6 +1,8 @@
 package com.professor1416.phittoos.ui.screens.home
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,15 +25,20 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import com.professor1416.phittoos.ui.components.DashboardInsightsCard
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,6 +52,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import com.professor1416.phittoos.R
 import com.professor1416.phittoos.domain.ReliabilityLevel
 import com.professor1416.phittoos.ui.components.ReliabilityPill
 import androidx.compose.material3.Surface
@@ -58,9 +66,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -141,6 +159,15 @@ fun HomeScreen(
                 )
             }
 
+            // Dashboard Insights Card (Lent vs. Borrowed & 30-Day Spending Trends)
+            if (uiState.friends.isNotEmpty() || uiState.dashboardInsights.has30DayActivity) {
+                item {
+                    DashboardInsightsCard(
+                        insights = uiState.dashboardInsights
+                    )
+                }
+            }
+
             // Search / Filter Bar for friends
             item {
                 SearchAndFilterBar(
@@ -155,8 +182,15 @@ fun HomeScreen(
                 item {
                     EmptyFriendsState(
                         isSearching = uiState.searchQuery.isNotBlank(),
+                        searchQuery = uiState.searchQuery,
                         onAddFriendClick = { showQuickAddDialog = true },
-                        onAddTransactionClick = { onNavigateToAddTransaction(null) }
+                        onAddTransactionClick = { onNavigateToAddTransaction(null) },
+                        onClearSearch = { viewModel.onSearchQueryChange("") },
+                        onAddSearchedFriend = { friendName ->
+                            viewModel.quickAddFriend(friendName) { newId ->
+                                onNavigateToFriendDetail(newId)
+                            }
+                        }
                     )
                 }
             } else {
@@ -781,74 +815,440 @@ private fun FriendRowItem(
 }
 
 @Composable
-private fun EmptyFriendsState(
+internal fun EmptyFriendsState(
     isSearching: Boolean,
+    searchQuery: String = "",
     onAddFriendClick: () -> Unit,
-    onAddTransactionClick: () -> Unit
+    onAddTransactionClick: () -> Unit,
+    onClearSearch: () -> Unit = {},
+    onAddSearchedFriend: (String) -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .testTag("empty_friends_state"),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
+        if (isSearching) {
+            // SEARCH EMPTY STATE
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                EmptySearchIllustration()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(R.string.empty_search_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = stringResource(R.string.empty_search_subtitle, searchQuery),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Slate600,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = { onAddSearchedFriend(searchQuery) },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.testTag("button_empty_add_friend")
+                ) {
+                    Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.empty_search_add_friend, searchQuery),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = onClearSearch,
+                    modifier = Modifier.testTag("button_empty_clear_search")
+                ) {
+                    Text(
+                        text = stringResource(R.string.empty_search_clear),
+                        color = Slate600,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        } else {
+            // MAIN ZERO-STATE / FIRST ENTRY ONBOARDING
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                EmptyHomeIllustration()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(R.string.empty_home_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    letterSpacing = (-0.3).sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = stringResource(R.string.empty_home_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Slate600,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Guided Step Cards
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    EmptyGuideStepItem(
+                        stepNumber = "1",
+                        title = stringResource(R.string.empty_home_step_1_title),
+                        description = stringResource(R.string.empty_home_step_1_desc),
+                        icon = Icons.Default.PersonAdd,
+                        accentColor = EmeraldGreenDark,
+                        badgeBg = EmeraldGreenSurface
+                    )
+
+                    EmptyGuideStepItem(
+                        stepNumber = "2",
+                        title = stringResource(R.string.empty_home_step_2_title),
+                        description = stringResource(R.string.empty_home_step_2_desc),
+                        icon = Icons.Default.Payments,
+                        accentColor = Slate800,
+                        badgeBg = Slate100
+                    )
+
+                    EmptyGuideStepItem(
+                        stepNumber = "3",
+                        title = stringResource(R.string.empty_home_step_3_title),
+                        description = stringResource(R.string.empty_home_step_3_desc),
+                        icon = Icons.Default.Celebration,
+                        accentColor = CoralOrangeDark,
+                        badgeBg = CoralOrangeSurface
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Action CTA Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onAddTransactionClick,
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("button_empty_add_transaction")
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.empty_home_cta_primary),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = onAddFriendClick,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("button_empty_add_friend")
+                    ) {
+                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.empty_home_cta_secondary),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyGuideStepItem(
+    stepNumber: String,
+    title: String,
+    description: String,
+    icon: ImageVector,
+    accentColor: Color,
+    badgeBg: Color
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.background,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
-                    .background(EmeraldGreenSurface),
+                    .background(badgeBg),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.PersonAdd,
+                    imageVector = icon,
                     contentDescription = null,
-                    tint = EmeraldGreenDark,
-                    modifier = Modifier.size(32.dp)
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            Text(
-                text = if (isSearching) "No friends matching your search" else "Add your first friend to get started",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Slate900,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Track informal loans and borrowings cleanly with one tap.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Slate600,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Button(
-                onClick = onAddFriendClick,
-                colors = ButtonDefaults.buttonColors(containerColor = Slate900),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.testTag("button_empty_add_friend")
-            ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Add Friend", fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Slate600
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyHomeIllustration(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(width = 190.dp, height = 135.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        val mintSurface = EmeraldGreenSurface
+        val emerald = EmeraldGreen
+        val emeraldDark = EmeraldGreenDark
+        val goldCoin = Color(0xFFFBBF24)
+        val goldCoinDark = Color(0xFFD97706)
+        val slateLine = Slate200
+        val cardBorder = Slate200
+
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+
+            // 1. Soft Ambient Glow Background
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        mintSurface.copy(alpha = 0.9f),
+                        mintSurface.copy(alpha = 0.4f),
+                        Color.Transparent
+                    ),
+                    center = Offset(cx, cy),
+                    radius = size.width * 0.48f
+                ),
+                radius = size.width * 0.48f,
+                center = Offset(cx, cy)
+            )
+
+            // 2. Main Ledger / Record Card (Centered with subtle tilt)
+            val cardW = 100.dp.toPx()
+            val cardH = 75.dp.toPx()
+            val cardLeft = cx - cardW / 2f - 4.dp.toPx()
+            val cardTop = cy - cardH / 2f + 4.dp.toPx()
+
+            // Card shadow/background
+            drawRoundRect(
+                color = Color.White,
+                topLeft = Offset(cardLeft, cardTop),
+                size = Size(cardW, cardH),
+                cornerRadius = CornerRadius(14.dp.toPx(), 14.dp.toPx())
+            )
+            drawRoundRect(
+                color = cardBorder,
+                topLeft = Offset(cardLeft, cardTop),
+                size = Size(cardW, cardH),
+                cornerRadius = CornerRadius(14.dp.toPx(), 14.dp.toPx()),
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Card Header Ribbon
+            drawRoundRect(
+                color = emerald.copy(alpha = 0.85f),
+                topLeft = Offset(cardLeft, cardTop),
+                size = Size(cardW, 16.dp.toPx()),
+                cornerRadius = CornerRadius(14.dp.toPx(), 14.dp.toPx())
+            )
+            // Flatten bottom of ribbon
+            drawRect(
+                color = emerald.copy(alpha = 0.85f),
+                topLeft = Offset(cardLeft, cardTop + 8.dp.toPx()),
+                size = Size(cardW, 8.dp.toPx())
+            )
+
+            // Card Line Records
+            val lineLeft = cardLeft + 14.dp.toPx()
+            val lineY1 = cardTop + 28.dp.toPx()
+            val lineY2 = cardTop + 42.dp.toPx()
+            val lineY3 = cardTop + 56.dp.toPx()
+
+            // Line 1: Green bullet + line
+            drawCircle(color = emeraldDark, radius = 2.5.dp.toPx(), center = Offset(lineLeft - 4.dp.toPx(), lineY1))
+            drawLine(
+                color = slateLine,
+                start = Offset(lineLeft + 4.dp.toPx(), lineY1),
+                end = Offset(cardLeft + cardW - 14.dp.toPx(), lineY1),
+                strokeWidth = 3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+
+            // Line 2: Blue bullet + line
+            drawCircle(color = Slate600, radius = 2.5.dp.toPx(), center = Offset(lineLeft - 4.dp.toPx(), lineY2))
+            drawLine(
+                color = slateLine,
+                start = Offset(lineLeft + 4.dp.toPx(), lineY2),
+                end = Offset(cardLeft + cardW - 24.dp.toPx(), lineY2),
+                strokeWidth = 3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+
+            // Line 3: Soft bullet + line
+            drawCircle(color = emerald, radius = 2.5.dp.toPx(), center = Offset(lineLeft - 4.dp.toPx(), lineY3))
+            drawLine(
+                color = slateLine.copy(alpha = 0.7f),
+                start = Offset(lineLeft + 4.dp.toPx(), lineY3),
+                end = Offset(cardLeft + cardW - 36.dp.toPx(), lineY3),
+                strokeWidth = 3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+
+            // 3. Floating Gold Rupee Coin (Top Right)
+            val coinRadius = 16.dp.toPx()
+            val coinCenter = Offset(cx + 42.dp.toPx(), cy - 22.dp.toPx())
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(goldCoin, goldCoinDark),
+                    center = coinCenter,
+                    radius = coinRadius
+                ),
+                radius = coinRadius,
+                center = coinCenter
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.5f),
+                radius = coinRadius - 3.dp.toPx(),
+                center = coinCenter,
+                style = Stroke(width = 1.5.dp.toPx())
+            )
+
+            // Floating Small Coin (Left)
+            val smallCoinRadius = 9.dp.toPx()
+            val smallCoinCenter = Offset(cx - 52.dp.toPx(), cy + 18.dp.toPx())
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(emerald.copy(alpha = 0.9f), emeraldDark),
+                    center = smallCoinCenter,
+                    radius = smallCoinRadius
+                ),
+                radius = smallCoinRadius,
+                center = smallCoinCenter
+            )
+
+            // 4. Floating Sparkle Stars
+            val sparkle1 = Offset(cx + 62.dp.toPx(), cy + 16.dp.toPx())
+            drawCircle(color = goldCoin, radius = 2.5.dp.toPx(), center = sparkle1)
+
+            val sparkle2 = Offset(cx - 44.dp.toPx(), cy - 28.dp.toPx())
+            drawCircle(color = emeraldDark, radius = 3.dp.toPx(), center = sparkle2)
+
+            val sparkle3 = Offset(cx + 20.dp.toPx(), cy - 42.dp.toPx())
+            drawCircle(color = goldCoin, radius = 2.dp.toPx(), center = sparkle3)
+        }
+
+        // Overlay Centered Emblem Badge (Handshake / Checkmark)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 24.dp, bottom = 4.dp)
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(EmeraldGreen)
+                .border(2.dp, Color.White, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptySearchIllustration(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(90.dp)
+            .clip(CircleShape)
+            .background(EmeraldGreenSurface),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.SearchOff,
+            contentDescription = null,
+            tint = EmeraldGreenDark,
+            modifier = Modifier.size(44.dp)
+        )
     }
 }
 

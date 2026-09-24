@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.professor1416.phittoos.data.db.AppDatabase
+import com.professor1416.phittoos.data.preferences.AppThemeMode
 import com.professor1416.phittoos.data.preferences.UserPreferences
 import com.professor1416.phittoos.data.repository.PhittoosRepository
 import com.professor1416.phittoos.export.PhittoosCsvExporter
@@ -28,7 +29,8 @@ data class SettingsUiState(
     val isClearingData: Boolean = false,
     val appVersion: String = "1.0",
     val message: String? = null,
-    val lastBackupTime: Long = 0L
+    val lastBackupTime: Long = 0L,
+    val themeMode: AppThemeMode = AppThemeMode.SYSTEM
 )
 
 class SettingsViewModel(
@@ -39,7 +41,8 @@ class SettingsViewModel(
     private val _uiState = MutableStateFlow(
         SettingsUiState(
             profileName = userPreferences.userName,
-            remindersEnabled = userPreferences.remindersEnabled
+            remindersEnabled = userPreferences.remindersEnabled,
+            themeMode = userPreferences.themeMode
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -63,8 +66,16 @@ class SettingsViewModel(
                 remindersEnabled = userPreferences.remindersEnabled,
                 isNotificationPermissionGranted = permissionGranted,
                 appVersion = version,
-                lastBackupTime = userPreferences.lastBackupTime
+                lastBackupTime = userPreferences.lastBackupTime,
+                themeMode = userPreferences.themeMode
             )
+        }
+    }
+
+    fun updateThemeMode(mode: AppThemeMode) {
+        userPreferences.themeMode = mode
+        _uiState.update {
+            it.copy(themeMode = mode)
         }
     }
 

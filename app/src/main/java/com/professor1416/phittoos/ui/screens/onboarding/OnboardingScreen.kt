@@ -5,8 +5,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,11 +28,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -47,14 +42,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
@@ -65,16 +62,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.professor1416.phittoos.R
 import com.professor1416.phittoos.data.preferences.UserPreferences
 import com.professor1416.phittoos.ui.theme.EmeraldGreen
-import com.professor1416.phittoos.ui.theme.EmeraldGreenDark
-import com.professor1416.phittoos.ui.theme.EmeraldGreenSurface
-import com.professor1416.phittoos.ui.theme.Slate100
-import com.professor1416.phittoos.ui.theme.Slate200
-import com.professor1416.phittoos.ui.theme.Slate400
-import com.professor1416.phittoos.ui.theme.Slate500
-import com.professor1416.phittoos.ui.theme.Slate600
-import com.professor1416.phittoos.ui.theme.Slate700
 import com.professor1416.phittoos.ui.theme.Slate900
 
 @Composable
@@ -86,8 +76,12 @@ fun OnboardingScreen(
     var step by rememberSaveable { mutableIntStateOf(1) }
     var userNameInput by rememberSaveable { mutableStateOf(userPreferences.userName) }
     var nameError by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
 
-    fun completeAndGoHome() {
+    fun completeAndGoHome(fallbackName: String = "You") {
+        if (userPreferences.userName.isBlank()) {
+            userPreferences.userName = fallbackName
+        }
         userPreferences.hasCompletedOnboarding = true
         onCompleteOnboarding()
     }
@@ -95,25 +89,24 @@ fun OnboardingScreen(
     fun proceedFromStep2() {
         val trimmed = userNameInput.trim()
         if (trimmed.isEmpty()) {
-            nameError = "Please enter your name"
+            nameError = context.getString(R.string.onboarding_enter_name_error)
             return
         }
         nameError = null
         userPreferences.userName = trimmed
-        completeAndGoHome()
+        completeAndGoHome(trimmed)
     }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            val context = androidx.compose.ui.platform.LocalContext.current
             val progressDesc = context.getString(
-                com.professor1416.phittoos.R.string.onboarding_progress_announcement,
+                R.string.onboarding_progress_announcement,
                 step,
                 2
             )
-            // Step Progress Indicator at top: 2 steps in Offline V1
+            // Step Progress Indicator at top: 2 steps
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -131,20 +124,20 @@ fun OnboardingScreen(
                             .height(6.dp)
                             .width(if (step == i) 32.dp else 12.dp)
                             .clip(CircleShape)
-                            .background(if (step >= i) EmeraldGreen else Slate200)
+                            .background(if (step >= i) EmeraldGreen else MaterialTheme.colorScheme.surfaceVariant)
                     )
                     if (i < 2) Spacer(modifier = Modifier.width(8.dp))
                 }
             }
         },
         bottomBar = {
-            // Pinned Bottom Action Button Bar - Guaranteed visible and clickable
+            // Pinned Bottom Action Button Bar
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .imePadding()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (step) {
@@ -152,42 +145,84 @@ fun OnboardingScreen(
                         Button(
                             onClick = { step = 2 },
                             shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Slate900),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp)
                                 .testTag("button_intro_get_started")
                                 .semantics { testTag = "button_next" }
                         ) {
-                            Text("Get Started", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = stringResource(R.string.onboarding_get_started),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        TextButton(
+                            onClick = { completeAndGoHome("You") },
+                            modifier = Modifier.testTag("button_intro_skip")
+                        ) {
+                            Text(
+                                text = stringResource(R.string.onboarding_skip_to_home),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                     2 -> {
+                        val isNameFilled = userNameInput.trim().isNotEmpty()
                         Button(
                             onClick = { proceedFromStep2() },
-                            enabled = userNameInput.trim().isNotEmpty(),
+                            enabled = isNameFilled,
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = EmeraldGreenDark,
-                                contentColor = Color.White
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp)
                                 .testTag("button_name_continue")
                         ) {
-                            Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = stringResource(R.string.onboarding_continue),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        TextButton(
+                            onClick = { completeAndGoHome("You") },
+                            modifier = Modifier.testTag("button_name_skip")
+                        ) {
+                            Text(
+                                text = stringResource(R.string.onboarding_skip),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
@@ -240,15 +275,16 @@ private fun OnboardingIntroStep() {
             .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // High-contrast logo container (deep slate circle with crisp border)
         Box(
             modifier = Modifier
                 .size(96.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF0F172A)),
+                .background(Slate900),
             contentAlignment = Alignment.Center
         ) {
             androidx.compose.foundation.Image(
-                painter = androidx.compose.ui.res.painterResource(id = com.professor1416.phittoos.R.drawable.ic_launcher_foreground),
+                painter = painterResource(id = R.drawable.ic_launcher_foreground),
                 contentDescription = null,
                 modifier = Modifier.size(96.dp)
             )
@@ -257,23 +293,23 @@ private fun OnboardingIntroStep() {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = androidx.compose.ui.res.stringResource(id = com.professor1416.phittoos.R.string.app_name),
+            text = stringResource(id = R.string.app_name),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Black,
-            color = Slate900,
+            color = MaterialTheme.colorScheme.onBackground,
             letterSpacing = (-0.5).sp
         )
 
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = Slate100,
+            color = MaterialTheme.colorScheme.primaryContainer,
             modifier = Modifier.padding(top = 8.dp)
         ) {
             Text(
-                text = androidx.compose.ui.res.stringResource(id = com.professor1416.phittoos.R.string.tagline),
+                text = stringResource(id = R.string.tagline),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                color = Slate700,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
             )
         }
@@ -281,10 +317,10 @@ private fun OnboardingIntroStep() {
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Track money between you and your friends. No bank linking. No group setup.",
+            text = stringResource(id = R.string.app_description),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium,
-            color = Slate500,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             lineHeight = 24.sp,
             modifier = Modifier.padding(horizontal = 16.dp)
@@ -299,7 +335,6 @@ private fun OnboardingNameStep(
     onNameChange: (String) -> Unit,
     onDone: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -310,13 +345,13 @@ private fun OnboardingNameStep(
             modifier = Modifier
                 .size(80.dp)
                 .clip(CircleShape)
-                .background(EmeraldGreenSurface),
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.AccountCircle,
                 contentDescription = null,
-                tint = EmeraldGreenDark,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(44.dp)
             )
         }
@@ -324,19 +359,19 @@ private fun OnboardingNameStep(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "What's your name?",
+            text = stringResource(id = R.string.onboarding_whats_your_name),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = Slate900,
+            color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "This is how you'll appear on your shared records and reminder messages.",
+            text = stringResource(id = R.string.onboarding_name_subtitle),
             style = MaterialTheme.typography.bodyMedium,
-            color = Slate500,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -346,8 +381,8 @@ private fun OnboardingNameStep(
         OutlinedTextField(
             value = name,
             onValueChange = onNameChange,
-            label = { Text(context.getString(com.professor1416.phittoos.R.string.onboarding_name_label)) },
-            placeholder = { Text("Enter your name (e.g. Rahul)", color = Slate400) },
+            label = { Text(stringResource(id = R.string.onboarding_name_label)) },
+            placeholder = { Text("Enter your name (e.g. Rahul)", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
             singleLine = true,
             isError = errorMessage != null,
             supportingText = if (errorMessage != null) {
@@ -360,17 +395,17 @@ private fun OnboardingNameStep(
             ),
             keyboardActions = KeyboardActions(onDone = { onDone() }),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Slate900,
-                unfocusedTextColor = Slate900,
-                cursorColor = EmeraldGreen,
-                focusedBorderColor = EmeraldGreen,
-                unfocusedBorderColor = Slate200,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedPlaceholderColor = Slate400,
-                unfocusedPlaceholderColor = Slate400,
-                focusedLabelColor = EmeraldGreenDark,
-                unfocusedLabelColor = Slate500,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 errorLabelColor = MaterialTheme.colorScheme.error
             ),
             modifier = Modifier
@@ -388,8 +423,7 @@ private fun OnboardingNameStep(
         Text(
             text = "No account or password needed. 100% offline & private.",
             style = MaterialTheme.typography.labelSmall,
-            color = Slate600
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
-

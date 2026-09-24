@@ -1,13 +1,16 @@
 package com.professor1416.phittoos.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import com.professor1416.phittoos.data.preferences.AppThemeMode
 
 private val LightColorScheme = lightColorScheme(
-    primary = Slate900,
+    primary = EmeraldGreenDark,
     onPrimary = Color.White,
     primaryContainer = Slate100,
     onPrimaryContainer = Slate900,
@@ -27,11 +30,9 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = Slate100
 )
 
-// Reserved for future dedicated dark theme implementation
-@Suppress("unused")
 private val DarkColorScheme = darkColorScheme(
-    primary = Color.White,
-    onPrimary = Slate900,
+    primary = EmeraldGreen,
+    onPrimary = Slate950,
     primaryContainer = Slate800,
     onPrimaryContainer = Color.White,
     secondary = BrandTeal,
@@ -52,17 +53,23 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun PhittoosTheme(
-    darkTheme: Boolean = false, // Phittoos MVP enforces a deterministic brand color scheme independent of system dark/light mode
-    dynamicColor: Boolean = false, // Keep Phittoos brand identity consistent (no dynamic colors)
+    themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    darkTheme: Boolean = when (themeMode) {
+        AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+    },
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    // For the current MVP, Phittoos has one controlled visual design (slate/navy accents, white cards/surfaces, dark text).
-    // Always use LightColorScheme so system dark mode does NOT alter Phittoos UI colors.
-    val colorScheme = LightColorScheme
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val financialColors = if (darkTheme) DarkFinancialColors else LightFinancialColors
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalFinancialColors provides financialColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

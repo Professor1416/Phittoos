@@ -8,6 +8,8 @@
     <string name="onboarding_whats_your_name">What\'s your name?</string>
     <string name="onboarding_name_subtitle">This is how you\'ll appear on your shared records and reminder messages.</string>
     <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_skip">Skip for now</string>
+    <string name="onboarding_skip_to_home">Skip to Home</string>
     <string name="onboarding_enter_name_error">Please enter your name</string>
 
     <!-- Add Transaction Direction & Inputs -->
@@ -133,4 +135,30 @@
     <!-- Onboarding Accessibility -->
     <string name="onboarding_name_label">Your name</string>
     <string name="onboarding_progress_announcement">Step %1$d of %2$d</string>
+    <!-- Appearance / Theme Settings -->
+    <string name="settings_section_appearance">APPEARANCE</string>
+    <string name="settings_theme_title">Theme</string>
+    <string name="settings_theme_subtitle">Choose your display theme</string>
+    <string name="settings_theme_system">System default</string>
+    <string name="settings_theme_system_desc">Follow device light or dark mode</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_light_desc">Clean high-contrast light theme</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_dark_desc">Eye-safe slate dark theme</string>
+
+    <!-- Empty State Guide -->
+    <string name="empty_home_title">Ready to start tracking?</string>
+    <string name="empty_home_subtitle">Keep informal loans and shared expenses with friends clean, organized, and stress-free.</string>
+    <string name="empty_home_step_1_title">Add Friends</string>
+    <string name="empty_home_step_1_desc">Add the people you frequently share money with</string>
+    <string name="empty_home_step_2_title">Log Amounts</string>
+    <string name="empty_home_step_2_desc">Record who lent or borrowed in one quick tap</string>
+    <string name="empty_home_step_3_title">Settle &amp; Celebrate</string>
+    <string name="empty_home_step_3_desc">Smart reminders ensure no awkward conversations</string>
+    <string name="empty_home_cta_primary">Record First Entry</string>
+    <string name="empty_home_cta_secondary">Quick Add Friend</string>
+    <string name="empty_search_title">No friends found</string>
+    <string name="empty_search_subtitle">No friends matched \"%1$s\". Check spelling or add them below.</string>
+    <string name="empty_search_add_friend">Add \"%1$s\" as a friend</string>
+    <string name="empty_search_clear">Clear Search</string>
 </resources>

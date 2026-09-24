@@ -22,9 +22,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.BrightnessMedium
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Storage
@@ -40,6 +44,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -64,6 +70,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
@@ -71,6 +78,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.professor1416.phittoos.R
+import com.professor1416.phittoos.data.preferences.AppThemeMode
 import com.professor1416.phittoos.export.PhittoosCsvExporter
 import com.professor1416.phittoos.ui.theme.CoralOrange
 import com.professor1416.phittoos.ui.theme.CoralOrangeDark
@@ -298,7 +307,7 @@ fun SettingsScreen(
                                     text = uiState.profileName.ifBlank { "Not set" },
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Slate900
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -316,6 +325,96 @@ fun SettingsScreen(
                                 color = EmeraldGreenDark
                             )
                         }
+                    }
+                }
+            }
+
+            // 2. APPEARANCE / THEME SECTION
+            SettingsSection(title = stringResource(R.string.settings_section_appearance)) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Header info row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BrightnessMedium,
+                                contentDescription = null,
+                                tint = EmeraldGreen,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.settings_theme_title),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = when (uiState.themeMode) {
+                                        AppThemeMode.SYSTEM -> stringResource(R.string.settings_theme_system_desc)
+                                        AppThemeMode.LIGHT -> stringResource(R.string.settings_theme_light_desc)
+                                        AppThemeMode.DARK -> stringResource(R.string.settings_theme_dark_desc)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Slate500
+                                )
+                            }
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                        ThemeOptionRow(
+                            title = stringResource(R.string.settings_theme_system),
+                            subtitle = stringResource(R.string.settings_theme_system_desc),
+                            icon = Icons.Default.BrightnessAuto,
+                            isSelected = uiState.themeMode == AppThemeMode.SYSTEM,
+                            testTag = "row_theme_system",
+                            radioTag = "radio_theme_system",
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.updateThemeMode(AppThemeMode.SYSTEM)
+                            }
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                        ThemeOptionRow(
+                            title = stringResource(R.string.settings_theme_light),
+                            subtitle = stringResource(R.string.settings_theme_light_desc),
+                            icon = Icons.Default.LightMode,
+                            isSelected = uiState.themeMode == AppThemeMode.LIGHT,
+                            testTag = "row_theme_light",
+                            radioTag = "radio_theme_light",
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.updateThemeMode(AppThemeMode.LIGHT)
+                            }
+                        )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                        ThemeOptionRow(
+                            title = stringResource(R.string.settings_theme_dark),
+                            subtitle = stringResource(R.string.settings_theme_dark_desc),
+                            icon = Icons.Default.DarkMode,
+                            isSelected = uiState.themeMode == AppThemeMode.DARK,
+                            testTag = "row_theme_dark",
+                            radioTag = "radio_theme_dark",
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.updateThemeMode(AppThemeMode.DARK)
+                            }
+                        )
                     }
                 }
             }
@@ -885,7 +984,7 @@ private fun SettingsClickableRow(
     subtitle: String,
     testTag: String,
     onClick: () -> Unit,
-    titleColor: Color = Slate900
+    titleColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
     Row(
         modifier = Modifier
@@ -926,6 +1025,64 @@ private fun SettingsClickableRow(
             contentDescription = null,
             tint = Slate400,
             modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun ThemeOptionRow(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    testTag: String,
+    radioTag: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .testTag(testTag),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected) EmeraldGreen else Slate400,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) EmeraldGreenDark else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Slate500
+                )
+            }
+        }
+        RadioButton(
+            selected = isSelected,
+            onClick = null,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = EmeraldGreen,
+                unselectedColor = Slate400
+            ),
+            modifier = Modifier
+                .size(24.dp)
+                .testTag(radioTag)
         )
     }
 }

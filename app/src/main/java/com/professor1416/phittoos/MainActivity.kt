@@ -10,13 +10,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -50,11 +53,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val app = application as PhittoosApplication
+        val userPreferences = app.userPreferences
         val friendIdFromNotification = intent?.getLongExtra(ReminderNotificationHelper.EXTRA_FRIEND_ID, -1L)?.takeIf { it > 0 }
 
         setContent {
-            PhittoosTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
+            val themeMode by userPreferences.themeModeFlow.collectAsStateWithLifecycle()
+            PhittoosTheme(themeMode = themeMode) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     PhittoosNavApp(app, initialFriendId = friendIdFromNotification)
                 }
             }

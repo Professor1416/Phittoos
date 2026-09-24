@@ -256,4 +256,51 @@ class OnboardingAccessibilityTest {
             titleBounds.bottom <= btnBounds.top
         )
     }
+
+    @Test
+    fun testSkipFromStep1_completesOnboardingWithDefaultName() {
+        var completed = false
+        composeTestRule.setContent {
+            PhittoosTheme {
+                OnboardingScreen(
+                    userPreferences = userPreferences,
+                    onCompleteOnboarding = { completed = true }
+                )
+            }
+        }
+
+        // Verify Skip button on step 1 is present and clickable
+        val skipBtn = composeTestRule.onNodeWithTag("button_intro_skip")
+        skipBtn.assertIsDisplayed()
+        skipBtn.performClick()
+
+        assertTrue(completed)
+        assertTrue(userPreferences.hasCompletedOnboarding)
+        assertEquals("You", userPreferences.userName)
+    }
+
+    @Test
+    fun testSkipFromStep2_completesOnboardingWithDefaultName() {
+        var completed = false
+        composeTestRule.setContent {
+            PhittoosTheme {
+                OnboardingScreen(
+                    userPreferences = userPreferences,
+                    onCompleteOnboarding = { completed = true }
+                )
+            }
+        }
+
+        // Advance to step 2
+        composeTestRule.onNodeWithTag("button_intro_get_started").performClick()
+
+        // Verify Skip button on step 2 is present and clickable
+        val skipBtn = composeTestRule.onNodeWithTag("button_name_skip")
+        skipBtn.assertIsDisplayed()
+        skipBtn.performClick()
+
+        assertTrue(completed)
+        assertTrue(userPreferences.hasCompletedOnboarding)
+        assertEquals("You", userPreferences.userName)
+    }
 }
