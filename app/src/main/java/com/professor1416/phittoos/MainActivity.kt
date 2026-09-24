@@ -141,12 +141,17 @@ fun PhittoosNavApp(app: PhittoosApplication, initialFriendId: Long? = null) {
                 navArgument("friendId") {
                     type = NavType.LongType
                     defaultValue = -1L
+                },
+                navArgument("transactionId") {
+                    type = NavType.LongType
+                    defaultValue = -1L
                 }
             )
         ) { backStackEntry ->
             val friendId = backStackEntry.arguments?.getLong("friendId")?.takeIf { it > 0 }
+            val transactionId = backStackEntry.arguments?.getLong("transactionId")?.takeIf { it > 0 }
             val addTxViewModel: AddTransactionViewModel = viewModel(
-                factory = AddTransactionViewModelFactory(app.repository, friendId)
+                factory = AddTransactionViewModelFactory(app.repository, friendId, transactionId)
             )
             AddTransactionScreen(
                 viewModel = addTxViewModel,
@@ -175,7 +180,10 @@ fun PhittoosNavApp(app: PhittoosApplication, initialFriendId: Long? = null) {
                     navController.popBackStack()
                 },
                 onNavigateToAddTransaction = { fId ->
-                    navController.navigate(Screen.AddTransaction.createRoute(fId))
+                    navController.navigate(Screen.AddTransaction.createRoute(friendId = fId))
+                },
+                onNavigateToEditTransaction = { fId, txId ->
+                    navController.navigate(Screen.AddTransaction.createRoute(friendId = fId, transactionId = txId))
                 }
             )
         }

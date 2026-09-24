@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -134,7 +135,7 @@ fun AddTransactionScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Add Transaction",
+                        text = if (uiState.isEditMode) stringResource(R.string.tx_title_edit_transaction) else "Add Transaction",
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
@@ -171,6 +172,7 @@ fun AddTransactionScreen(
                     val currentDueDate = uiState.dueDate
                     val isDueDateValid = currentDueDate == null || !DueDateHelper.isPastDate(currentDueDate)
                     val isReady = uiState.selectedFriend != null &&
+                        !uiState.isFriendNotFound &&
                         uiState.amount.toDoubleOrNull()?.let { it > 0 } == true &&
                         isDueDateValid
 
@@ -196,7 +198,13 @@ fun AddTransactionScreen(
                             .testTag("button_save_transaction")
                     ) {
                         Text(
-                            text = if (uiState.isSaving) "Saving..." else "Add transaction",
+                            text = if (uiState.isSaving) {
+                                "Saving..."
+                            } else if (uiState.isEditMode) {
+                                stringResource(R.string.tx_button_save_changes)
+                            } else {
+                                "Add transaction"
+                            },
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isReady) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -206,228 +214,275 @@ fun AddTransactionScreen(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            // Error Message (if any, excluding field-anchored errors to prevent duplicate speech)
-            val isAmountError = uiState.errorMessage == "Please enter a valid amount"
-            if (uiState.errorMessage != null && !isAmountError) {
-                Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
+        if (uiState.isFriendNotFound) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        text = uiState.errorMessage ?: "",
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(12.dp)
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(56.dp)
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Friend not found",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "This friend could not be found or was deleted.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = onNavigateBack,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Return")
+                    }
                 }
             }
-
-            // 1. SELECT FRIEND SECTION
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                modifier = Modifier.fillMaxWidth()
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "1. SELECT FRIEND",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    if (uiState.selectedFriend != null) {
-                        // Selected friend card
-                        val friend = uiState.selectedFriend!!
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AvatarInitial(name = friend.name, size = 42.dp)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = friend.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Selected",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = financialColors.onLentContainer,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.updateFriendSearch("") },
-                                modifier = Modifier.testTag("button_change_friend")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Change friend",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    // Recent Friends as Chips (Fast 1-tap selection)
-                    if (uiState.recentFriends.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Recent Friends",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            uiState.recentFriends.forEach { friend ->
-                                val isSelected = uiState.selectedFriend?.id == friend.id
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { viewModel.selectFriend(friend) },
-                                    label = { Text(friend.name, fontWeight = FontWeight.Medium) },
-                                    leadingIcon = {
-                                        AvatarInitial(name = friend.name, size = 20.dp)
-                                    },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    ),
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Friend search / input field
-                    OutlinedTextField(
-                        value = uiState.friendSearchQuery,
-                        onValueChange = { viewModel.updateFriendSearch(it) },
+                // Error Message (if any, excluding field-anchored errors to prevent duplicate speech)
+                val isAmountError = uiState.errorMessage == "Please enter a valid amount"
+                if (uiState.errorMessage != null && !isAmountError) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("input_friend_search"),
-                        placeholder = { Text("Search or type new friend's name", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), fontSize = 14.sp) },
-                        leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        },
-                        trailingIcon = {
-                            if (uiState.friendSearchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.updateFriendSearch("") }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            cursorColor = MaterialTheme.colorScheme.primary,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            .padding(bottom = 12.dp)
+                    ) {
+                        Text(
+                            text = uiState.errorMessage ?: "",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(12.dp)
                         )
-                    )
+                    }
+                }
 
-                    // Matching friends or inline "Add new friend" option
-                    val query = uiState.friendSearchQuery.trim()
-                    if (query.isNotEmpty()) {
-                        val matches = uiState.allFriends.filter {
-                            it.name.contains(query, ignoreCase = true)
-                        }
+                // 1. SELECT FRIEND SECTION
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = if (uiState.isFriendLocked) "1. FRIEND" else "1. SELECT FRIEND",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
-                        ) {
-                            matches.forEach { friend ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { viewModel.selectFriend(friend) }
-                                        .padding(vertical = 8.dp, horizontal = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    AvatarInitial(name = friend.name, size = 32.dp)
-                                    Spacer(modifier = Modifier.width(10.dp))
+                        if (uiState.selectedFriend != null) {
+                            // Selected friend card
+                            val friend = uiState.selectedFriend!!
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AvatarInitial(name = friend.name, size = 42.dp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = friend.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
+                                    Text(
+                                        text = if (uiState.isFriendLocked) "Locked to this friend" else "Selected",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = financialColors.onLentContainer,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                if (!uiState.isFriendLocked) {
+                                    IconButton(
+                                        onClick = { viewModel.updateFriendSearch("") },
+                                        modifier = Modifier.testTag("button_change_friend")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Change friend",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
+                        }
 
-                            // Inline "+ Add new friend 'XYZ'" button
-                            val exactMatch = matches.any { it.name.equals(query, ignoreCase = true) }
-                            if (!exactMatch) {
+                        if (!uiState.isFriendLocked) {
+                            // Recent Friends as Chips (Fast 1-tap selection)
+                            if (uiState.recentFriends.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Recent Friends",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { viewModel.addNewFriend(query) }
-                                        .padding(vertical = 10.dp, horizontal = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .clip(CircleShape)
-                                            .background(financialColors.lentContainer),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.PersonAdd,
-                                            contentDescription = null,
-                                            tint = financialColors.onLentContainer,
-                                            modifier = Modifier.size(18.dp)
+                                    uiState.recentFriends.forEach { friend ->
+                                        val isSelected = uiState.selectedFriend?.id == friend.id
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = { viewModel.selectFriend(friend) },
+                                            label = { Text(friend.name, fontWeight = FontWeight.Medium) },
+                                            leadingIcon = {
+                                                AvatarInitial(name = friend.name, size = 20.dp)
+                                            },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            ),
+                                            shape = RoundedCornerShape(12.dp)
                                         )
                                     }
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Text(
-                                        text = "+ Add \"$query\" as new friend",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = financialColors.onLentContainer
-                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // Friend search / input field
+                            OutlinedTextField(
+                                value = uiState.friendSearchQuery,
+                                onValueChange = { viewModel.updateFriendSearch(it) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("input_friend_search"),
+                                placeholder = { Text("Search or type new friend's name", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), fontSize = 14.sp) },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                },
+                                trailingIcon = {
+                                    if (uiState.friendSearchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { viewModel.updateFriendSearch("") }) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    cursorColor = MaterialTheme.colorScheme.primary,
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                    unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            )
+
+                            // Matching friends or inline "Add new friend" option
+                            val query = uiState.friendSearchQuery.trim()
+                            if (query.isNotEmpty()) {
+                                val matches = uiState.allFriends.filter {
+                                    it.name.contains(query, ignoreCase = true)
+                                }
+
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp)
+                                ) {
+                                    matches.forEach { friend ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { viewModel.selectFriend(friend) }
+                                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            AvatarInitial(name = friend.name, size = 32.dp)
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Text(
+                                                text = friend.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+
+                                    // Inline "+ Add new friend 'XYZ'" button
+                                    val exactMatch = matches.any { it.name.equals(query, ignoreCase = true) }
+                                    if (!exactMatch) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { viewModel.addNewFriend(query) }
+                                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
+                                                    .background(financialColors.lentContainer),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.PersonAdd,
+                                                    contentDescription = null,
+                                                    tint = financialColors.onLentContainer,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Text(
+                                                text = "+ Add \"$query\" as new friend",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = financialColors.onLentContainer
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -862,4 +917,5 @@ fun AddTransactionScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
 }

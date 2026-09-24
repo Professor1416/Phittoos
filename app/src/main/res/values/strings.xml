@@ -161,4 +161,23 @@
     <string name="empty_search_subtitle">No friends matched \"%1$s\". Check spelling or add them below.</string>
     <string name="empty_search_add_friend">Add \"%1$s\" as a friend</string>
     <string name="empty_search_clear">Clear Search</string>
+
+    <!-- Contextual Add & Correction Flow -->
+    <string name="tx_title_edit_transaction">Edit transaction</string>
+    <string name="tx_button_save_changes">Save changes</string>
+    <string name="action_edit_transaction">Edit transaction</string>
+    <string name="action_delete_transaction">Delete transaction</string>
+    <string name="dialog_delete_transaction_title">Delete transaction?</string>
+    <string name="dialog_delete_transaction_body">This removes this entry from your hisaab with %1$s. This cannot be undone.</string>
+    <string name="dialog_delete_transaction_confirm">Delete</string>
+    <string name="dialog_delete_transaction_cancel">Cancel</string>
+    <string name="msg_transaction_deleted">Transaction deleted.</string>
+    <string name="msg_transaction_updated">Changes saved.</string>
+    <string name="msg_cannot_edit_has_repayments">This transaction has repayment history and can\'t be directly changed.</string>
+    <string name="msg_cannot_edit_settled">Settled transactions are kept in history and can\'t be directly changed.</string>
+    <string name="msg_cannot_delete_has_repayments">This transaction has repayment history and can\'t be directly changed.</string>
+    <string name="msg_cannot_delete_settled">Settled transactions are kept in history and can\'t be directly changed.</string>
+    <string name="error_friend_not_found">Friend not found.</string>
+    <string name="error_transaction_not_found">This transaction could not be found.</string>
+    <string name="error_edit_not_open">This transaction is no longer pending.</string>
 </resources>

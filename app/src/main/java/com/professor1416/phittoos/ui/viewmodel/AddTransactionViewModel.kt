@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.professor1416.phittoos.data.model.Friend
 import com.professor1416.phittoos.data.model.TransactionDirection
+import com.professor1416.phittoos.data.model.TransactionStatus
+import com.professor1416.phittoos.data.model.effectivePaidAmount
+import com.professor1416.phittoos.data.repository.EditErrorReason
+import com.professor1416.phittoos.data.repository.EditTransactionResult
 import com.professor1416.phittoos.data.repository.PhittoosRepository
 import com.professor1416.phittoos.domain.DueDateHelper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +29,11 @@ data class AddTransactionUiState(
     val note: String = "",
     val dueDate: Long? = null,
     val isSaving: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isFriendLocked: Boolean = false,
+    val isEditMode: Boolean = false,
+    val isFriendNotFound: Boolean = false,
+    val editTransactionId: Long? = null
 )
 
 private data class FormState(
@@ -36,22 +44,88 @@ private data class FormState(
     val note: String = "",
     val dueDate: Long? = null,
     val isSaving: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isFriendLocked: Boolean = false,
+    val isEditMode: Boolean = false,
+    val isFriendNotFound: Boolean = false,
+    val editTransactionId: Long? = null
 )
 
 class AddTransactionViewModel(
     private val repository: PhittoosRepository,
-    initialFriendId: Long? = null
+    initialFriendId: Long? = null,
+    transactionIdToEdit: Long? = null
 ) : ViewModel() {
 
-    private val _form = MutableStateFlow(FormState())
+    private val _form = MutableStateFlow(
+        FormState(
+            isFriendLocked = (initialFriendId != null && initialFriendId > 0) || (transactionIdToEdit != null && transactionIdToEdit > 0),
+            isEditMode = transactionIdToEdit != null && transactionIdToEdit > 0,
+            editTransactionId = transactionIdToEdit?.takeIf { it > 0 }
+        )
+    )
 
     init {
-        if (initialFriendId != null && initialFriendId > 0) {
+        if (transactionIdToEdit != null && transactionIdToEdit > 0) {
             viewModelScope.launch {
-                repository.getFriendById(initialFriendId).collect { friend ->
-                    if (friend != null && _form.value.selectedFriend == null) {
-                        _form.update { it.copy(selectedFriend = friend) }
+                val tx = repository.getTransactionById(transactionIdToEdit)
+                if (tx == null) {
+                    _form.update { it.copy(errorMessage = "This transaction could not be found.") }
+                    return@launch
+                }
+                if (tx.status != TransactionStatus.OPEN) {
+                    _form.update { it.copy(errorMessage = "Settled transactions are kept in history and can't be directly changed.") }
+                    return@launch
+                }
+                if (tx.effectivePaidAmount > 0.0 || (tx.paidAmount ?: 0.0) > 0.0 || tx.settledAt != null) {
+                    _form.update { it.copy(errorMessage = "This transaction has repayment history and can't be directly changed.") }
+                    return@launch
+                }
+
+                val friend = repository.getFriendByIdOnce(tx.friendId)
+                if (friend == null) {
+                    _form.update { it.copy(isFriendNotFound = true, errorMessage = "Friend not found.") }
+                    return@launch
+                }
+
+                val formattedAmount = if (tx.amount % 1.0 == 0.0) {
+                    tx.amount.toLong().toString()
+                } else {
+                    tx.amount.toString()
+                }
+
+                _form.update {
+                    it.copy(
+                        selectedFriend = friend,
+                        direction = tx.direction,
+                        amount = formattedAmount,
+                        note = tx.note ?: "",
+                        dueDate = tx.dueDate,
+                        isFriendLocked = true,
+                        isEditMode = true,
+                        editTransactionId = tx.id
+                    )
+                }
+            }
+        } else if (initialFriendId != null && initialFriendId > 0) {
+            viewModelScope.launch {
+                val friend = repository.getFriendByIdOnce(initialFriendId)
+                if (friend != null) {
+                    _form.update {
+                        it.copy(
+                            selectedFriend = friend,
+                            isFriendLocked = true,
+                            isFriendNotFound = false
+                        )
+                    }
+                } else {
+                    _form.update {
+                        it.copy(
+                            selectedFriend = null,
+                            isFriendLocked = true,
+                            isFriendNotFound = true,
+                            errorMessage = "Friend not found."
+                        )
                     }
                 }
             }
@@ -79,15 +153,24 @@ class AddTransactionViewModel(
             note = form.note,
             dueDate = form.dueDate,
             isSaving = form.isSaving,
-            errorMessage = form.errorMessage
+            errorMessage = form.errorMessage,
+            isFriendLocked = form.isFriendLocked,
+            isEditMode = form.isEditMode,
+            isFriendNotFound = form.isFriendNotFound,
+            editTransactionId = form.editTransactionId
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = AddTransactionUiState()
+        started = SharingStarted.Eagerly,
+        initialValue = AddTransactionUiState(
+            isFriendLocked = (initialFriendId != null && initialFriendId > 0) || (transactionIdToEdit != null && transactionIdToEdit > 0),
+            isEditMode = transactionIdToEdit != null && transactionIdToEdit > 0,
+            editTransactionId = transactionIdToEdit?.takeIf { it > 0 }
+        )
     )
 
     fun selectFriend(friend: Friend) {
+        if (_form.value.isFriendLocked) return
         _form.update {
             it.copy(
                 selectedFriend = friend,
@@ -98,10 +181,12 @@ class AddTransactionViewModel(
     }
 
     fun updateFriendSearch(query: String) {
+        if (_form.value.isFriendLocked) return
         _form.update { it.copy(friendSearchQuery = query) }
     }
 
     fun addNewFriend(name: String) {
+        if (_form.value.isFriendLocked) return
         val trimmed = name.trim()
         if (trimmed.isBlank()) return
         viewModelScope.launch {
@@ -152,6 +237,12 @@ class AddTransactionViewModel(
     fun saveTransaction(onSuccess: (toastMessage: String) -> Unit) {
         val currentForm = _form.value
         if (currentForm.isSaving) return
+
+        if (currentForm.isFriendNotFound) {
+            _form.update { it.copy(errorMessage = "Friend not found.") }
+            return
+        }
+
         val friend = currentForm.selectedFriend
         if (friend == null) {
             _form.update { it.copy(errorMessage = "Please select or add a friend") }
@@ -172,39 +263,68 @@ class AddTransactionViewModel(
         viewModelScope.launch {
             _form.update { it.copy(isSaving = true) }
             val dir = currentForm.direction
-            repository.addTransaction(
-                friendId = friend.id,
-                amount = amountVal,
-                direction = dir,
-                note = currentForm.note,
-                dueDate = currentForm.dueDate
-            )
-            _form.update { it.copy(isSaving = false) }
+            val trimmedNote = currentForm.note.trim().ifBlank { null }
 
-            val formattedAmount = if (amountVal % 1.0 == 0.0) {
-                amountVal.toInt().toString()
+            if (currentForm.isEditMode && currentForm.editTransactionId != null) {
+                val result = repository.updateOpenUnpaidTransaction(
+                    transactionId = currentForm.editTransactionId,
+                    amount = amountVal,
+                    direction = dir,
+                    note = trimmedNote,
+                    dueDate = currentForm.dueDate
+                )
+                _form.update { it.copy(isSaving = false) }
+                when (result) {
+                    is EditTransactionResult.Success -> {
+                        onSuccess("Changes saved.")
+                    }
+                    is EditTransactionResult.Error -> {
+                        val msg = when (result.reason) {
+                            EditErrorReason.TRANSACTION_NOT_FOUND -> "This transaction could not be found."
+                            EditErrorReason.NOT_OPEN -> "This transaction is no longer pending."
+                            EditErrorReason.HAS_REPAYMENTS -> "This transaction has repayment history and can't be directly changed."
+                            EditErrorReason.INVALID_AMOUNT -> "Enter an amount greater than ₹0."
+                            EditErrorReason.INVALID_DUE_DATE -> "Due date cannot be in the past."
+                        }
+                        _form.update { it.copy(errorMessage = msg) }
+                    }
+                }
             } else {
-                String.format("%.2f", amountVal)
-            }
+                repository.addTransaction(
+                    friendId = friend.id,
+                    amount = amountVal,
+                    direction = dir,
+                    note = trimmedNote,
+                    dueDate = currentForm.dueDate
+                )
+                _form.update { it.copy(isSaving = false) }
 
-            val toast = if (dir == TransactionDirection.LENT) {
-                "Added: You lent ₹$formattedAmount to ${friend.name}"
-            } else {
-                "Added: You borrowed ₹$formattedAmount from ${friend.name}"
+                val formattedAmount = if (amountVal % 1.0 == 0.0) {
+                    amountVal.toInt().toString()
+                } else {
+                    String.format("%.2f", amountVal)
+                }
+
+                val toast = if (dir == TransactionDirection.LENT) {
+                    "Added: You lent ₹$formattedAmount to ${friend.name}"
+                } else {
+                    "Added: You borrowed ₹$formattedAmount from ${friend.name}"
+                }
+                onSuccess(toast)
             }
-            onSuccess(toast)
         }
     }
 }
 
 class AddTransactionViewModelFactory(
     private val repository: PhittoosRepository,
-    private val friendId: Long?
+    private val friendId: Long? = null,
+    private val transactionId: Long? = null
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AddTransactionViewModel::class.java)) {
-            return AddTransactionViewModel(repository, friendId) as T
+            return AddTransactionViewModel(repository, friendId, transactionId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

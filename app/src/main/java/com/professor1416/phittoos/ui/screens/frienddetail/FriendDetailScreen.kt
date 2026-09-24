@@ -31,15 +31,21 @@ import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -109,6 +115,7 @@ fun FriendDetailScreen(
     viewModel: FriendDetailViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToAddTransaction: (Long) -> Unit,
+    onNavigateToEditTransaction: (Long, Long) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -124,6 +131,7 @@ fun FriendDetailScreen(
 
     var txToSettle by remember { mutableStateOf<TransactionEntity?>(null) }
     var txToRepay by remember { mutableStateOf<TransactionEntity?>(null) }
+    var txToDelete by remember { mutableStateOf<TransactionEntity?>(null) }
     var showBulkSettlementDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.toastMessage) {
@@ -358,10 +366,66 @@ fun FriendDetailScreen(
                         TimelineTransactionItem(
                             tx = tx,
                             onSettleClick = { txToSettle = tx },
-                            onRepayClick = { txToRepay = tx }
+                            onRepayClick = { txToRepay = tx },
+                            onEditClick = { onNavigateToEditTransaction(friend.id, tx.id) },
+                            onDeleteClick = { txToDelete = tx }
                         )
                     }
                 }
+            }
+
+            // Contextual Delete Confirmation Dialog
+            txToDelete?.let { tx ->
+                AlertDialog(
+                    onDismissRequest = {
+                        if (!uiState.isDeleting) {
+                            txToDelete = null
+                        }
+                    },
+                    title = {
+                        Text(
+                            text = stringResource(R.string.dialog_delete_transaction_title),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = stringResource(
+                                R.string.dialog_delete_transaction_body,
+                                friend.name
+                            )
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.deleteTransaction(tx.id, onSuccess = {
+                                    txToDelete = null
+                                })
+                            },
+                            enabled = !uiState.isDeleting,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ),
+                            modifier = Modifier.testTag("button_confirm_delete")
+                        ) {
+                            Text(
+                                text = if (uiState.isDeleting) "Deleting..." else stringResource(R.string.dialog_delete_transaction_confirm)
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { txToDelete = null },
+                            enabled = !uiState.isDeleting,
+                            modifier = Modifier.testTag("button_cancel_delete")
+                        ) {
+                            Text(stringResource(R.string.dialog_delete_transaction_cancel))
+                        }
+                    }
+                )
             }
 
             // Contextual Repayment Dialog
@@ -607,7 +671,9 @@ internal fun ActionRow(
 internal fun TimelineTransactionItem(
     tx: TransactionEntity,
     onSettleClick: () -> Unit,
-    onRepayClick: () -> Unit
+    onRepayClick: () -> Unit,
+    onEditClick: () -> Unit = {},
+    onDeleteClick: () -> Unit = {}
 ) {
     val financialColors = PhittoosColors.financial
     val isLent = tx.direction == TransactionDirection.LENT
@@ -617,6 +683,7 @@ internal fun TimelineTransactionItem(
     val effectivePaid = tx.effectivePaidAmount
     val remaining = tx.effectiveRemainingAmount
     val isPartiallyPaid = !isConfirmed && effectivePaid > 0.0
+    val isEligibleForCorrection = tx.status == TransactionStatus.OPEN && effectivePaid == 0.0 && tx.settledAt == null
 
     Card(
         modifier = Modifier
@@ -668,118 +735,204 @@ internal fun TimelineTransactionItem(
                     )
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = Formatters.formatCurrency(tx.amount),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent
-                    )
+                Row(
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = Formatters.formatCurrency(tx.amount),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isLent) financialColors.lentAccent else financialColors.borrowedAccent
+                        )
 
-                    // Status Badge
-                    when {
-                        isConfirmed -> {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = financialColors.lentContainer,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        // Status Badge
+                        when {
+                            isConfirmed -> {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = financialColors.lentContainer,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = financialColors.onLentContainer,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = "Settled",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = financialColors.onLentContainer
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = financialColors.onLentContainer,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = "Settled",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = financialColors.onLentContainer
+                                        )
+                                    }
+                                }
+                            }
+                            isPartiallyPaid -> {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Amber100,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.HourglassTop,
+                                            contentDescription = null,
+                                            tint = Amber700,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = "Partially Paid",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Amber700
+                                        )
+                                    }
+                                }
+                            }
+                            isOverdue -> {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.errorContainer,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.ErrorOutline,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = "Overdue",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    }
+                                }
+                            }
+                            else -> {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.HourglassTop,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = "Pending",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
-                        isPartiallyPaid -> {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Amber100,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.HourglassTop,
-                                        contentDescription = null,
-                                        tint = Amber700,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = "Partially Paid",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Amber700
-                                    )
-                                }
-                            }
+                    }
+
+                    Box {
+                        var menuExpanded by remember { mutableStateOf(false) }
+                        IconButton(
+                            onClick = { menuExpanded = true },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .testTag("button_tx_menu_${tx.id}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Transaction options",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        isOverdue -> {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.errorContainer,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.ErrorOutline,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = "Overdue",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                }
-                            }
-                        }
-                        else -> {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.HourglassTop,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = "Pending",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            if (isEligibleForCorrection) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_edit_transaction)) },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Edit, contentDescription = null)
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onEditClick()
+                                    },
+                                    modifier = Modifier.testTag("menu_edit_tx_${tx.id}")
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.action_delete_transaction),
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        onDeleteClick()
+                                    },
+                                    modifier = Modifier.testTag("menu_delete_tx_${tx.id}")
+                                )
+                            } else if (isConfirmed) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.msg_cannot_edit_settled),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    enabled = false,
+                                    onClick = { menuExpanded = false },
+                                    modifier = Modifier.testTag("menu_info_tx_${tx.id}")
+                                )
+                            } else {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.msg_cannot_edit_has_repayments),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    },
+                                    enabled = false,
+                                    onClick = { menuExpanded = false },
+                                    modifier = Modifier.testTag("menu_info_tx_${tx.id}")
+                                )
                             }
                         }
                     }

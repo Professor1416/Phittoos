@@ -15,6 +15,7 @@ import com.professor1416.phittoos.data.model.TransactionEntity
 import com.professor1416.phittoos.data.model.TransactionStatus
 import com.professor1416.phittoos.data.model.TransactionWithFriend
 import com.professor1416.phittoos.data.model.dueInfo
+import com.professor1416.phittoos.data.model.effectivePaidAmount
 import com.professor1416.phittoos.data.model.effectiveRemainingAmount
 import com.professor1416.phittoos.domain.ReliabilityEngine
 import androidx.room.withTransaction
@@ -33,6 +34,30 @@ enum class RepaymentErrorReason {
     ALREADY_SETTLED,
     EXCEEDS_REMAINING,
     NO_LONGER_OPEN
+}
+
+enum class EditErrorReason {
+    TRANSACTION_NOT_FOUND,
+    NOT_OPEN,
+    HAS_REPAYMENTS,
+    INVALID_AMOUNT,
+    INVALID_DUE_DATE
+}
+
+sealed class EditTransactionResult {
+    data class Success(val updatedTransaction: TransactionEntity) : EditTransactionResult()
+    data class Error(val message: String, val reason: EditErrorReason) : EditTransactionResult()
+}
+
+enum class DeleteErrorReason {
+    TRANSACTION_NOT_FOUND,
+    NOT_OPEN,
+    HAS_REPAYMENTS
+}
+
+sealed class DeleteTransactionResult {
+    object Success : DeleteTransactionResult()
+    data class Error(val message: String, val reason: DeleteErrorReason) : DeleteTransactionResult()
 }
 
 data class SettlementResult(
@@ -290,6 +315,103 @@ class PhittoosRepository(
 
     suspend fun getTransactionById(transactionId: Long): TransactionEntity? {
         return transactionDao.getTransactionById(transactionId)
+    }
+
+    suspend fun updateOpenUnpaidTransaction(
+        transactionId: Long,
+        amount: Double,
+        direction: TransactionDirection,
+        note: String? = null,
+        dueDate: Long? = null
+    ): EditTransactionResult {
+        if (amount <= 0.0 || amount.isNaN() || amount.isInfinite()) {
+            return EditTransactionResult.Error(
+                message = "Enter an amount greater than ₹0.",
+                reason = EditErrorReason.INVALID_AMOUNT
+            )
+        }
+        if (dueDate != null && com.professor1416.phittoos.domain.DueDateHelper.isPastDate(dueDate)) {
+            return EditTransactionResult.Error(
+                message = "Due date cannot be in the past.",
+                reason = EditErrorReason.INVALID_DUE_DATE
+            )
+        }
+
+        return runInTransaction {
+            val tx = transactionDao.getTransactionById(transactionId)
+                ?: return@runInTransaction EditTransactionResult.Error(
+                    message = "This transaction could not be found.",
+                    reason = EditErrorReason.TRANSACTION_NOT_FOUND
+                )
+
+            if (tx.status != TransactionStatus.OPEN) {
+                return@runInTransaction EditTransactionResult.Error(
+                    message = "This transaction is no longer pending.",
+                    reason = EditErrorReason.NOT_OPEN
+                )
+            }
+
+            if (tx.effectivePaidAmount > 0.0 || (tx.paidAmount ?: 0.0) > 0.0 || tx.settledAt != null) {
+                return@runInTransaction EditTransactionResult.Error(
+                    message = "This transaction already has repayment history and cannot be edited.",
+                    reason = EditErrorReason.HAS_REPAYMENTS
+                )
+            }
+
+            val trimmedNote = note?.trim()?.ifBlank { null }
+            val updatedTx = tx.copy(
+                amount = amount,
+                direction = direction,
+                note = trimmedNote,
+                dueDate = dueDate
+            )
+
+            transactionDao.updateTransaction(updatedTx)
+
+            // Update corresponding TRANSACTION_CREATED activity if present to maintain internal consistency
+            activityDao?.updateTransactionCreatedActivity(
+                transactionId = transactionId,
+                amount = amount,
+                direction = direction,
+                note = trimmedNote
+            )
+
+            EditTransactionResult.Success(updatedTx)
+        }
+    }
+
+    suspend fun deleteOpenUnpaidTransaction(
+        transactionId: Long
+    ): DeleteTransactionResult {
+        return runInTransaction {
+            val tx = transactionDao.getTransactionById(transactionId)
+                ?: return@runInTransaction DeleteTransactionResult.Error(
+                    message = "This transaction could not be found.",
+                    reason = DeleteErrorReason.TRANSACTION_NOT_FOUND
+                )
+
+            if (tx.status != TransactionStatus.OPEN) {
+                return@runInTransaction DeleteTransactionResult.Error(
+                    message = "This transaction is no longer pending.",
+                    reason = DeleteErrorReason.NOT_OPEN
+                )
+            }
+
+            if (tx.effectivePaidAmount > 0.0 || (tx.paidAmount ?: 0.0) > 0.0 || tx.settledAt != null) {
+                return@runInTransaction DeleteTransactionResult.Error(
+                    message = "This transaction already has repayment history and cannot be deleted.",
+                    reason = DeleteErrorReason.HAS_REPAYMENTS
+                )
+            }
+
+            // Remove activities for this transaction to avoid orphaned records
+            activityDao?.deleteActivitiesForTransaction(transactionId)
+
+            // Delete transaction from database
+            transactionDao.deleteTransaction(tx)
+
+            DeleteTransactionResult.Success
+        }
     }
 
     suspend fun recordRepayment(

@@ -46,6 +46,7 @@ data class FriendDetailUiState(
     val bulkSettlementOpenCount: Int = 0,
     val settlingTransactionIds: Set<Long> = emptySet(),
     val isBulkSettling: Boolean = false,
+    val isDeleting: Boolean = false,
     val reliabilityInfo: ReliabilityInfo = ReliabilityInfo.NEW
 )
 
@@ -53,6 +54,7 @@ private data class OperationState(
     val toast: UiMessage? = null,
     val settlingIds: Set<Long> = emptySet(),
     val isBulkSettling: Boolean = false,
+    val isDeleting: Boolean = false,
     val celebration: SettlementCelebrationEvent? = null
 )
 
@@ -65,6 +67,7 @@ class FriendDetailViewModel(
     private val _celebrationEvent = MutableStateFlow<SettlementCelebrationEvent?>(null)
     private val _settlingTransactionIds = MutableStateFlow<Set<Long>>(emptySet())
     private val _isBulkSettling = MutableStateFlow(false)
+    private val _isDeleting = MutableStateFlow(false)
 
     var isScreenActive: Boolean = false
         private set
@@ -94,9 +97,10 @@ class FriendDetailViewModel(
         _toastMessage,
         _settlingTransactionIds,
         _isBulkSettling,
+        _isDeleting,
         _celebrationEvent
-    ) { toast, settlingIds, isBulkSettling, celebration ->
-        OperationState(toast, settlingIds, isBulkSettling, celebration)
+    ) { toast, settlingIds, isBulkSettling, isDeleting, celebration ->
+        OperationState(toast, settlingIds, isBulkSettling, isDeleting, celebration)
     }
 
     val uiState: StateFlow<FriendDetailUiState> = combine(
@@ -163,6 +167,7 @@ class FriendDetailViewModel(
             bulkSettlementOpenCount = bulkCount,
             settlingTransactionIds = opState.settlingIds,
             isBulkSettling = opState.isBulkSettling,
+            isDeleting = opState.isDeleting,
             reliabilityInfo = reliability
         )
     }.stateIn(
@@ -277,6 +282,40 @@ class FriendDetailViewModel(
 
     fun markTransactionAsPaid(transactionId: Long) {
         settleTransaction(transactionId)
+    }
+
+    fun deleteTransaction(
+        transactionId: Long,
+        onSuccess: (() -> Unit)? = null,
+        onError: ((UiMessage) -> Unit)? = null
+    ) {
+        if (_isDeleting.value) return
+        _isDeleting.value = true
+        viewModelScope.launch {
+            try {
+                val result = repository.deleteOpenUnpaidTransaction(transactionId)
+                when (result) {
+                    is com.professor1416.phittoos.data.repository.DeleteTransactionResult.Success -> {
+                        _toastMessage.value = UiMessage(R.string.msg_transaction_deleted)
+                        onSuccess?.invoke()
+                    }
+                    is com.professor1416.phittoos.data.repository.DeleteTransactionResult.Error -> {
+                        val errorMsg = when (result.reason) {
+                            com.professor1416.phittoos.data.repository.DeleteErrorReason.TRANSACTION_NOT_FOUND ->
+                                UiMessage(R.string.error_transaction_not_found)
+                            com.professor1416.phittoos.data.repository.DeleteErrorReason.NOT_OPEN ->
+                                UiMessage(R.string.msg_cannot_delete_settled)
+                            com.professor1416.phittoos.data.repository.DeleteErrorReason.HAS_REPAYMENTS ->
+                                UiMessage(R.string.msg_cannot_delete_has_repayments)
+                        }
+                        _toastMessage.value = errorMsg
+                        onError?.invoke(errorMsg)
+                    }
+                }
+            } finally {
+                _isDeleting.value = false
+            }
+        }
     }
 
     fun clearToast() {
