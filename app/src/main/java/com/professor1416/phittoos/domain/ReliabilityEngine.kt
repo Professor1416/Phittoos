@@ -109,7 +109,7 @@ object ReliabilityEngine {
         if (isRed) {
             val summary = when {
                 overdueOpenCount >= 2 -> "Multiple repayments are currently overdue."
-                else -> "Repayments are frequently delayed."
+                else -> "Repayments are frequently delayed in your records."
             }
             return ReliabilityInfo(
                 level = ReliabilityLevel.RED,
@@ -128,7 +128,7 @@ object ReliabilityEngine {
         if (isYellow) {
             val summary = when {
                 overdueOpenCount > 0 -> "Currently has an overdue balance."
-                else -> "Some repayments have been delayed."
+                else -> "Some repayments have been delayed in your records."
             }
             return ReliabilityInfo(
                 level = ReliabilityLevel.YELLOW,
@@ -142,7 +142,7 @@ object ReliabilityEngine {
         // GREEN criteria:
         // Minimum history met, no overdue balance, and average delay <= 3 days (or no recorded delays)
         val summary = if (hasDelayData) {
-            "Usually settles on time."
+            "Usually settled on time in your records."
         } else {
             "Settled on time with no delays recorded."
         }

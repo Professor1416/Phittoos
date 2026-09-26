@@ -1378,7 +1378,7 @@ private fun QuickAddFriendDialog(
         text = {
             Column {
                 Text(
-                    "Enter friend's name to track loans and borrowings.",
+                    "Enter friend's name to track money lent and borrowed.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

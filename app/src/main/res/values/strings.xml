@@ -6,7 +6,7 @@
     <!-- Onboarding -->
     <string name="onboarding_get_started">Get Started</string>
     <string name="onboarding_whats_your_name">What\'s your name?</string>
-    <string name="onboarding_name_subtitle">This is how you\'ll appear on your shared records and reminder messages.</string>
+    <string name="onboarding_name_subtitle">This name is used in your Phittoos records and reminders on this device.</string>
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_skip">Skip for now</string>
     <string name="onboarding_skip_to_home">Skip to Home</string>

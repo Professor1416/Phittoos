@@ -565,7 +565,7 @@ private fun FriendDetailHeader(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "($openTransactionsCount unsettled loan${if (openTransactionsCount == 1) "" else "s"})",
+                        text = "($openTransactionsCount pending transaction${if (openTransactionsCount == 1) "" else "s"})",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -1123,7 +1123,7 @@ internal fun TimelineTransactionItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Due ${DueDateHelper.formatDueDate(tx.dueDate)}",
+                        text = "Was due ${DueDateHelper.formatDueDate(tx.dueDate)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

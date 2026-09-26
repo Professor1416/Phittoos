@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -133,8 +134,8 @@ class AddTransactionViewModel(
     }
 
     val uiState: StateFlow<AddTransactionUiState> = combine(
-        repository.allFriends,
-        repository.recentFriends,
+        repository.allFriends.onStart { emit(emptyList()) },
+        repository.recentFriends.onStart { emit(emptyList()) },
         _form
     ) { allFriends, recentFriends, form ->
         val effectiveRecent = if (recentFriends.isNotEmpty()) {
