@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -87,6 +88,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -167,6 +169,7 @@ fun AddTransactionScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .navigationBarsPadding()
                         .padding(16.dp)
                 ) {
                     val currentDueDate = uiState.dueDate
@@ -376,6 +379,7 @@ fun AddTransactionScreen(
                                             shape = RoundedCornerShape(12.dp)
                                         )
                                     }
+                                    Spacer(modifier = Modifier.width(4.dp))
                                 }
                             }
 
@@ -520,7 +524,7 @@ fun AddTransactionScreen(
                                     onClick = { viewModel.setDirection(TransactionDirection.LENT) },
                                     role = Role.RadioButton
                                 )
-                                .padding(vertical = 16.dp, horizontal = 12.dp)
+                                .padding(vertical = 14.dp, horizontal = 8.dp)
                                 .testTag("toggle_lent"),
                             contentAlignment = Alignment.Center
                         ) {
@@ -537,9 +541,11 @@ fun AddTransactionScreen(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = stringResource(R.string.tx_direction_i_gave),
-                                    fontSize = 15.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = if (isLent) Color.White else MaterialTheme.colorScheme.onSurface
+                                    color = if (isLent) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -556,7 +562,7 @@ fun AddTransactionScreen(
                                     onClick = { viewModel.setDirection(TransactionDirection.BORROWED) },
                                     role = Role.RadioButton
                                 )
-                                .padding(vertical = 16.dp, horizontal = 12.dp)
+                                .padding(vertical = 14.dp, horizontal = 8.dp)
                                 .testTag("toggle_borrowed"),
                             contentAlignment = Alignment.Center
                         ) {
@@ -573,9 +579,11 @@ fun AddTransactionScreen(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = stringResource(R.string.tx_direction_i_took),
-                                    fontSize = 15.sp,
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = if (isBorrowed) Color.White else MaterialTheme.colorScheme.onSurface
+                                    color = if (isBorrowed) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -716,6 +724,7 @@ fun AddTransactionScreen(
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.width(4.dp))
                     }
                 }
             }

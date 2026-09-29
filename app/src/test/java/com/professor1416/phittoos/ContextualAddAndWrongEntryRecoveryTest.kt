@@ -67,9 +67,8 @@ class ContextualAddAndWrongEntryRecoveryTest {
     fun contextualAdd_withValidFriendId_locksFriend() = runTest {
         val friendId = repository.insertFriend("Ali")
         val viewModel = AddTransactionViewModel(repository, initialFriendId = friendId)
-        advanceUntilIdle()
+        val state = viewModel.uiState.first { it.selectedFriend != null }
 
-        val state = viewModel.uiState.value
         assertTrue(state.isFriendLocked)
         assertFalse(state.isFriendNotFound)
         assertFalse(state.isEditMode)
@@ -80,9 +79,8 @@ class ContextualAddAndWrongEntryRecoveryTest {
     @Test
     fun contextualAdd_withInvalidFriendId_setsFriendNotFound() = runTest {
         val viewModel = AddTransactionViewModel(repository, initialFriendId = 99999L)
-        advanceUntilIdle()
+        val state = viewModel.uiState.first { it.isFriendNotFound }
 
-        val state = viewModel.uiState.value
         assertTrue(state.isFriendLocked)
         assertTrue(state.isFriendNotFound)
         assertNull(state.selectedFriend)
@@ -283,9 +281,8 @@ class ContextualAddAndWrongEntryRecoveryTest {
             initialFriendId = friendId,
             transactionIdToEdit = txId
         )
-        advanceUntilIdle()
+        val state = viewModel.uiState.first { it.amount == "1200" }
 
-        val state = viewModel.uiState.value
         assertTrue(state.isEditMode)
         assertTrue(state.isFriendLocked)
         assertEquals("1200", state.amount)
@@ -301,7 +298,7 @@ class ContextualAddAndWrongEntryRecoveryTest {
         viewModel.saveTransaction {
             saved = true
         }
-        advanceUntilIdle()
+        viewModel.uiState.first { !it.isSaving && it.errorMessage == null && it.amount == "1500" && saved }
 
         assertTrue(saved)
         val updatedTx = repository.getTransactionById(txId)
@@ -317,13 +314,13 @@ class ContextualAddAndWrongEntryRecoveryTest {
         val txId = repository.addTransaction(friendId, 250.0, TransactionDirection.LENT)
 
         val viewModel = FriendDetailViewModel(repository, friendId)
-        advanceUntilIdle()
+        viewModel.uiState.first { it.timeline.isNotEmpty() }
 
         var successCalled = false
         viewModel.deleteTransaction(txId, onSuccess = {
             successCalled = true
         })
-        advanceUntilIdle()
+        viewModel.uiState.first { it.toastMessage != null }
 
         assertTrue(successCalled)
         val txs = repository.getTransactionsForFriend(friendId).first()
