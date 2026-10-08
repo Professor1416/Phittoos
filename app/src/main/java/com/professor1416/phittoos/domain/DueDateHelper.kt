@@ -140,6 +140,68 @@ object DueDateHelper {
     }
 
     /**
+     * Checks if a calendar date is strictly in the future relative to nowMillis in timeZone.
+     * Today is NOT in the future (today is valid for transactions).
+     */
+    fun isFutureDate(
+        dateMillis: Long,
+        nowMillis: Long = System.currentTimeMillis(),
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): Boolean {
+        val dateCal = Calendar.getInstance(timeZone).apply {
+            timeInMillis = dateMillis
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val nowCal = Calendar.getInstance(timeZone).apply {
+            timeInMillis = nowMillis
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        val isSameDay = dateCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
+                dateCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
+
+        return dateCal.after(nowCal) && !isSameDay
+    }
+
+    /**
+     * Checks if a calendar date is today in timeZone.
+     */
+    fun isToday(
+        dateMillis: Long,
+        nowMillis: Long = System.currentTimeMillis(),
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): Boolean {
+        val dateCal = Calendar.getInstance(timeZone).apply { timeInMillis = dateMillis }
+        val nowCal = Calendar.getInstance(timeZone).apply { timeInMillis = nowMillis }
+        return dateCal.get(Calendar.YEAR) == nowCal.get(Calendar.YEAR) &&
+                dateCal.get(Calendar.DAY_OF_YEAR) == nowCal.get(Calendar.DAY_OF_YEAR)
+    }
+
+    /**
+     * Normalizes a timestamp to 12:00:00 local time in the specified timezone
+     * to prevent timezone and day-boundary rollover shifts.
+     */
+    fun normalizeToMidday(
+        dateMillis: Long,
+        timeZone: TimeZone = TimeZone.getDefault()
+    ): Long {
+        val cal = Calendar.getInstance(timeZone).apply {
+            timeInMillis = dateMillis
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        return cal.timeInMillis
+    }
+
+    /**
      * Calculates delay in calendar days between due date and settlement date.
      * Early repayment (settled before or on due date) returns 0.
      * Negative delay is never returned.

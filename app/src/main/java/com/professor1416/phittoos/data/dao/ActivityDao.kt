@@ -43,12 +43,13 @@ interface ActivityDao {
     @Query("DELETE FROM activity_records WHERE transaction_id = :transactionId")
     suspend fun deleteActivitiesForTransaction(transactionId: Long): Int
 
-    @Query("UPDATE activity_records SET amount = :amount, direction = :direction, note = :note WHERE transaction_id = :transactionId AND type = 'TRANSACTION_CREATED'")
+    @Query("UPDATE activity_records SET amount = :amount, direction = :direction, note = :note, created_at = :createdAt WHERE transaction_id = :transactionId AND type = 'TRANSACTION_CREATED'")
     suspend fun updateTransactionCreatedActivity(
         transactionId: Long,
         amount: Double,
         direction: com.professor1416.phittoos.data.model.TransactionDirection,
-        note: String?
+        note: String?,
+        createdAt: Long
     ): Int
 
     @Query("DELETE FROM activity_records")

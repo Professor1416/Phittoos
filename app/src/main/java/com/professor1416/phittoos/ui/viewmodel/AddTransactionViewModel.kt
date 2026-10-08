@@ -28,6 +28,7 @@ data class AddTransactionUiState(
     val direction: TransactionDirection = TransactionDirection.LENT,
     val amount: String = "",
     val note: String = "",
+    val transactionDate: Long = System.currentTimeMillis(),
     val dueDate: Long? = null,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
@@ -43,6 +44,7 @@ private data class FormState(
     val direction: TransactionDirection = TransactionDirection.LENT,
     val amount: String = "",
     val note: String = "",
+    val transactionDate: Long = System.currentTimeMillis(),
     val dueDate: Long? = null,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
@@ -101,6 +103,7 @@ class AddTransactionViewModel(
                         direction = tx.direction,
                         amount = formattedAmount,
                         note = tx.note ?: "",
+                        transactionDate = tx.createdDate,
                         dueDate = tx.dueDate,
                         isFriendLocked = true,
                         isEditMode = true,
@@ -152,6 +155,7 @@ class AddTransactionViewModel(
             direction = form.direction,
             amount = form.amount,
             note = form.note,
+            transactionDate = form.transactionDate,
             dueDate = form.dueDate,
             isSaving = form.isSaving,
             errorMessage = form.errorMessage,
@@ -217,6 +221,23 @@ class AddTransactionViewModel(
         _form.update { it.copy(note = newNote) }
     }
 
+    fun setTransactionDate(dateMillis: Long) {
+        if (DueDateHelper.isFutureDate(dateMillis)) {
+            _form.update {
+                it.copy(
+                    errorMessage = "Transaction date cannot be in the future."
+                )
+            }
+        } else {
+            _form.update {
+                it.copy(
+                    transactionDate = dateMillis,
+                    errorMessage = if (it.errorMessage == "Transaction date cannot be in the future.") null else it.errorMessage
+                )
+            }
+        }
+    }
+
     fun setDueDate(dateMillis: Long?) {
         if (dateMillis != null && DueDateHelper.isPastDate(dateMillis)) {
             _form.update {
@@ -256,6 +277,11 @@ class AddTransactionViewModel(
             return
         }
 
+        if (DueDateHelper.isFutureDate(currentForm.transactionDate)) {
+            _form.update { it.copy(errorMessage = "Transaction date cannot be in the future.") }
+            return
+        }
+
         if (currentForm.dueDate != null && DueDateHelper.isPastDate(currentForm.dueDate)) {
             _form.update { it.copy(errorMessage = "Due date cannot be in the past.") }
             return
@@ -265,6 +291,7 @@ class AddTransactionViewModel(
             _form.update { it.copy(isSaving = true) }
             val dir = currentForm.direction
             val trimmedNote = currentForm.note.trim().ifBlank { null }
+            val txDate = currentForm.transactionDate
 
             if (currentForm.isEditMode && currentForm.editTransactionId != null) {
                 val result = repository.updateOpenUnpaidTransaction(
@@ -272,7 +299,8 @@ class AddTransactionViewModel(
                     amount = amountVal,
                     direction = dir,
                     note = trimmedNote,
-                    dueDate = currentForm.dueDate
+                    dueDate = currentForm.dueDate,
+                    createdDate = txDate
                 )
                 _form.update { it.copy(isSaving = false) }
                 when (result) {
@@ -286,6 +314,7 @@ class AddTransactionViewModel(
                             EditErrorReason.HAS_REPAYMENTS -> "This transaction has repayment history and can't be directly changed."
                             EditErrorReason.INVALID_AMOUNT -> "Enter an amount greater than ₹0."
                             EditErrorReason.INVALID_DUE_DATE -> "Due date cannot be in the past."
+                            EditErrorReason.INVALID_TRANSACTION_DATE -> "Transaction date cannot be in the future."
                         }
                         _form.update { it.copy(errorMessage = msg) }
                     }
@@ -296,7 +325,8 @@ class AddTransactionViewModel(
                     amount = amountVal,
                     direction = dir,
                     note = trimmedNote,
-                    dueDate = currentForm.dueDate
+                    dueDate = currentForm.dueDate,
+                    createdDate = txDate
                 )
                 _form.update { it.copy(isSaving = false) }
 

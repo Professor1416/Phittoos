@@ -731,7 +731,103 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 4. OPTIONAL NOTE FIELD
+            // 4. TRANSACTION DATE
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("card_transaction_date")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.tx_header_transaction_date),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val isToday = DueDateHelper.isToday(uiState.transactionDate)
+
+                    fun showTransactionDatePicker() {
+                        val cal = Calendar.getInstance().apply {
+                            timeInMillis = uiState.transactionDate
+                        }
+                        val picker = DatePickerDialog(
+                            context,
+                            { _, year, month, day ->
+                                val selectedCal = Calendar.getInstance().apply {
+                                    set(Calendar.YEAR, year)
+                                    set(Calendar.MONTH, month)
+                                    set(Calendar.DAY_OF_MONTH, day)
+                                    set(Calendar.HOUR_OF_DAY, 12)
+                                    set(Calendar.MINUTE, 0)
+                                    set(Calendar.SECOND, 0)
+                                    set(Calendar.MILLISECOND, 0)
+                                }
+                                viewModel.setTransactionDate(selectedCal.timeInMillis)
+                            },
+                            cal.get(Calendar.YEAR),
+                            cal.get(Calendar.MONTH),
+                            cal.get(Calendar.DAY_OF_MONTH)
+                        )
+                        picker.datePicker.maxDate = System.currentTimeMillis()
+                        picker.show()
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { showTransactionDatePicker() },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (isToday) MaterialTheme.colorScheme.surfaceVariant else financialColors.lentContainer
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isToday) MaterialTheme.colorScheme.outline else financialColors.lentAccent
+                            ),
+                            modifier = Modifier.testTag("button_pick_transaction_date")
+                        ) {
+                            Icon(
+                                Icons.Default.CalendarToday,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isToday) MaterialTheme.colorScheme.onSurfaceVariant else financialColors.onLentContainer
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isToday) stringResource(R.string.tx_date_today) else Formatters.formatFullDate(uiState.transactionDate),
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isToday) MaterialTheme.colorScheme.onSurfaceVariant else financialColors.onLentContainer,
+                                modifier = Modifier.testTag("text_transaction_date")
+                            )
+                        }
+
+                        if (!isToday) {
+                            TextButton(
+                                onClick = { viewModel.setTransactionDate(System.currentTimeMillis()) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.testTag("button_reset_today_date")
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.tx_button_reset_today),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 5. OPTIONAL NOTE FIELD
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -740,7 +836,7 @@ fun AddTransactionScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "4. NOTE (OPTIONAL)",
+                        text = "5. NOTE (OPTIONAL)",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -773,7 +869,7 @@ fun AddTransactionScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 5. OPTIONAL DUE DATE PICKER (Defaults to "no due date")
+            // 6. OPTIONAL DUE DATE PICKER (Defaults to "no due date")
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -782,7 +878,7 @@ fun AddTransactionScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "5. DUE DATE (OPTIONAL)",
+                        text = "6. DUE DATE (OPTIONAL)",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -41,7 +41,8 @@ enum class EditErrorReason {
     NOT_OPEN,
     HAS_REPAYMENTS,
     INVALID_AMOUNT,
-    INVALID_DUE_DATE
+    INVALID_DUE_DATE,
+    INVALID_TRANSACTION_DATE
 }
 
 sealed class EditTransactionResult {
@@ -284,8 +285,12 @@ class PhittoosRepository(
         amount: Double,
         direction: TransactionDirection,
         note: String? = null,
-        dueDate: Long? = null
+        dueDate: Long? = null,
+        createdDate: Long = System.currentTimeMillis()
     ): Long {
+        if (com.professor1416.phittoos.domain.DueDateHelper.isFutureDate(createdDate)) {
+            throw IllegalArgumentException("Transaction date cannot be in the future.")
+        }
         return runInTransaction {
             val trimmedNote = note?.trim()?.ifBlank { null }
             val txId = transactionDao.insertTransaction(
@@ -294,6 +299,7 @@ class PhittoosRepository(
                     amount = amount,
                     direction = direction,
                     note = trimmedNote,
+                    createdDate = createdDate,
                     dueDate = dueDate,
                     status = TransactionStatus.OPEN
                 )
@@ -306,7 +312,7 @@ class PhittoosRepository(
                     amount = amount,
                     direction = direction,
                     note = trimmedNote,
-                    createdAt = System.currentTimeMillis()
+                    createdAt = createdDate
                 )
             )
             txId
@@ -322,7 +328,8 @@ class PhittoosRepository(
         amount: Double,
         direction: TransactionDirection,
         note: String? = null,
-        dueDate: Long? = null
+        dueDate: Long? = null,
+        createdDate: Long? = null
     ): EditTransactionResult {
         if (amount <= 0.0 || amount.isNaN() || amount.isInfinite()) {
             return EditTransactionResult.Error(
@@ -334,6 +341,12 @@ class PhittoosRepository(
             return EditTransactionResult.Error(
                 message = "Due date cannot be in the past.",
                 reason = EditErrorReason.INVALID_DUE_DATE
+            )
+        }
+        if (createdDate != null && com.professor1416.phittoos.domain.DueDateHelper.isFutureDate(createdDate)) {
+            return EditTransactionResult.Error(
+                message = "Transaction date cannot be in the future.",
+                reason = EditErrorReason.INVALID_TRANSACTION_DATE
             )
         }
 
@@ -359,11 +372,13 @@ class PhittoosRepository(
             }
 
             val trimmedNote = note?.trim()?.ifBlank { null }
+            val newCreatedDate = createdDate ?: tx.createdDate
             val updatedTx = tx.copy(
                 amount = amount,
                 direction = direction,
                 note = trimmedNote,
-                dueDate = dueDate
+                dueDate = dueDate,
+                createdDate = newCreatedDate
             )
 
             transactionDao.updateTransaction(updatedTx)
@@ -373,7 +388,8 @@ class PhittoosRepository(
                 transactionId = transactionId,
                 amount = amount,
                 direction = direction,
-                note = trimmedNote
+                note = trimmedNote,
+                createdAt = newCreatedDate
             )
 
             EditTransactionResult.Success(updatedTx)
