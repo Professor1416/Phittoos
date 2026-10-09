@@ -9,6 +9,7 @@ Phittoos is a private personal money ledger where correctness is paramount. Acci
 ### Operating Mandates
 - **Inspection Precedes Implementation**: Every task must begin by inspecting actual repository code, models, DAOs, and existing tests. Never assume architecture or features based on documentation alone.
 - **Financial Correctness Over UI Appearance**: A visually appealing screen is meaningless if accounting invariants, state transitions, or persistence rules are violated.
+- **Doer / Checker Verification Model**: Every code modification must satisfy both execution precision and rigorous adversarial checking before completion.
 - **Definition of Done**: A task is complete only when:
   1. Business and financial logic are mathematically correct and idempotent.
   2. Persistence and schema safety are preserved (with migrations if schema changes).
@@ -25,7 +26,7 @@ Phittoos is a private, person-to-person Android hisaab / informal money ledger.
 
 **Approved Tagline**: *"Tere mere hisaab… Phittoos!"*
 
-### Primary Use Case
+### Primary Use Case (Current V1)
 Record and track informal money exchanges strictly between two individuals (the user and one friend):
 - Money lent to a friend (friend owes user)
 - Money borrowed from a friend (user owes friend)
@@ -37,15 +38,17 @@ Record and track informal money exchanges strictly between two individuals (the 
 - Private transaction and activity history
 - Friend-level net balance and private reliability insights
 
-### Explicit Anti-Goals (What Phittoos Is NOT)
+### Permanent Anti-Goals (What Phittoos Must NEVER Become)
 - **NOT** a group expense splitter (do NOT turn Phittoos into Splitwise).
 - **NOT** a personal budgeting or expense tracker (no categories, salary tracking, or spending analytics).
 - **NOT** a bank, digital wallet, or neo-bank.
 - **NOT** a credit lender or interest calculator (zero interest, zero loan terms).
 - **NOT** a payment processor, payment gateway, or UPI transaction app.
-- **NOT** a cloud-synced multi-user social platform.
 
-**Boundary Rule**: Every proposed change must improve one-to-one hisaab recording, repayment, settlement, or history clarity. If a feature drifts into group splitting, budgeting, or banking, backlog it immediately.
+### Scope & Future Capability Boundary Rule
+- **Cloud / Shared Functionality**: Cloud/shared functionality is outside current V1 unless explicitly authorized by a scoped future task. When authorized, it must pass authentication, server authorization, sync/idempotency, conflict-handling, security, privacy and DPDP gates.
+- **Payment / UPI Handoff**: External payment/UPI handoff may only be considered in a specifically authorized future task and must never imply Phittoos processes or verifies the payment itself.
+- **Core Boundary Rule**: Every proposed change must improve one-to-one hisaab recording, repayment, settlement, or trustworthy history. If a feature drifts into group splitting, budgeting, banking, or credit lending, backlog it immediately.
 
 ---
 
@@ -56,16 +59,24 @@ Agents must evaluate evidence strictly in this order of precedence:
 2. **Current automated tests** (`app/src/test/java/...`)
 3. **Current Room database schema and migrations** (`data/db/AppDatabase.kt`)
 4. **Existing repository documentation** (`docs/...`)
-5. **Prompt / task instructions**
+5. **Task instructions**
 
 ### Conflict Resolution Protocol
 - If task documentation claims a feature exists or works in a certain way, but the source code proves otherwise, **repository truth wins**.
 - Report the mismatch explicitly rather than silently writing conflicting code or inventing non-existent abstractions.
 - Never claim a feature exists solely because documentation references it.
 
+### Tripartite State Classification
+When documenting or evaluating features, strictly distinguish between:
+1. **Current Implementation**: Confirmed in actual source code, DAOs, and automated tests.
+2. **Planned Feature Work**: Scoped and authorized tasks targeted for future milestones.
+3. **Hypothetical Concepts**: Exploratory ideas or architectural options not yet approved.
+
+*Rule*: Never present planned future work or hypothetical proposals as current application behavior.
+
 ---
 
-## 4. Required Engineering Loop
+## 4. Required Engineering Loop & Doer/Checker Model
 
 Every task on this repository must follow this structured engineering loop:
 
@@ -73,10 +84,10 @@ Every task on this repository must follow this structured engineering loop:
 INSPECT
   → ROOT CAUSE / REQUIREMENTS
   → PLAN
-  → IMPLEMENT MINIMALLY
+  → IMPLEMENT MINIMALLY (DOER)
   → TARGETED TEST
   → FULL REGRESSION (gradle :app:testDebugUnitTest)
-  → CHECKER REVIEW
+  → CHECKER REVIEW (CHECKER)
   → CORRECT
   → RE-TEST
   → STOP
@@ -93,11 +104,43 @@ Before editing or creating code, identify and document:
 7. **Privacy & permission impact**: Does it touch storage, notifications, or require permissions?
 8. **Test coverage**: Which existing tests protect this behaviour, and what new tests are needed?
 
-**No Unrelated Refactoring**: Do not reformat unrelated files, clean up unrelated methods, or change architectural patterns outside the scope of the assigned task.
+### Doer / Checker Roles
+- **DOER**: Implements the smallest safe, focused change that satisfies requirements without collateral edits or scope creep.
+- **CHECKER**: Independently reviews:
+  - Original requirement vs implementation
+  - Final git diff
+  - Accounting invariants and arithmetic safety
+  - Entity state transitions
+  - Persistence integrity and migrations
+  - Test validity and assertion depth
+  - Privacy, permission, and security boundaries
+  - Absence of unrelated refactorings or cosmetic cleanups
+  *Mandate*: The Checker must actively simulate financial edge cases (e.g., zero amounts, boundary overpayments, double settlements, mixed directions) and reject changes with insufficient verification evidence.
+
+### Change Discipline & Test Integrity
+- **No Unrelated Refactoring**: Do not reformat unrelated files, clean up unrelated methods, or change architectural patterns outside the scope of the assigned task.
+- **Never Weaken Tests**: Never weaken test assertions, remove tests, or widen floating-point tolerances to make a failing test pass. If a test fails, find the root cause in the code or update the test only if the underlying business specification has legitimately changed.
 
 ---
 
-## 5. Architecture Boundaries
+## 5. Financial Integrity Release Blockers
+
+Any reproducible defect in the following categories constitutes a **P0 / NO RELEASE** blocker:
+- Incorrectly changing a friend's net balance
+- Incorrectly altering a transaction's remaining amount
+- Settling the wrong transaction ID, wrong friend ID, or wrong direction
+- Settling an already-settled transaction (double settlement)
+- Corrupting partial repayment history or cumulative `paidAmount`
+- Closing, modifying, or settling unrelated open transactions
+- Losing, deleting, or hiding historical financial records
+- Corrupting or failing a Room database migration
+- Partially or improperly restoring a backup file
+
+**Absolute Rule**: A successful build (`compile_applet`) or a passing general test suite cannot override a financial-integrity defect. Any financial inaccuracy halts release immediately.
+
+---
+
+## 6. Architecture Boundaries
 
 The repository follows a clean, pragmatic MVVM pattern without unnecessary boilerplate:
 
@@ -136,7 +179,7 @@ Room Database (AppDatabase v4)
 
 ---
 
-## 6. Protected Accounting Invariants
+## 7. Protected Accounting Invariants
 
 Every agent must preserve all 15 core accounting invariants:
 
@@ -166,7 +209,7 @@ Every agent must preserve all 15 core accounting invariants:
 
 ---
 
-## 7. Money Input & Representation
+## 8. Money Input & Representation
 
 ### Current Representation: Double
 The repository currently represents monetary values as `Double`:
@@ -196,7 +239,7 @@ Input validation must reject:
 
 ---
 
-## 8. Partial Repayment Rules
+## 9. Partial Repayment Rules
 
 When working on or modifying repayment logic:
 
@@ -225,7 +268,7 @@ Every repayment change must be verified against:
 
 ---
 
-## 9. Settlement Rules
+## 10. Settlement Rules
 
 ### Individual Settlement (`markTransactionAsPaid`)
 - Marks a single `OPEN` transaction as `CONFIRMED`.
@@ -244,7 +287,7 @@ Every repayment change must be verified against:
 
 ---
 
-## 10. Date & Due-Date Rules
+## 11. Date & Due-Date Rules
 
 ### Due Dates (`dueDate: Long?`)
 - Due dates are optional.
@@ -265,7 +308,7 @@ Every repayment change must be verified against:
 
 ---
 
-## 11. Edit / Delete Rules
+## 12. Edit / Delete Rules
 
 ### Eligibility Criteria
 Editing and deletion are restricted to **open, untouched transactions only**:
@@ -282,7 +325,7 @@ Editing and deletion are restricted to **open, untouched transactions only**:
 
 ---
 
-## 12. Room / Persistence Safety
+## 13. Room / Persistence Safety
 
 ### Database Identity
 - Class: `AppDatabase`
@@ -302,7 +345,7 @@ Editing and deletion are restricted to **open, untouched transactions only**:
 
 ---
 
-## 13. Backup & Export Safety
+## 14. Backup & Export Safety
 
 ### CSV Export (`PhittoosCsvExporter`)
 - Format: `transaction_id,friend_name,direction,amount,paid_amount,remaining_amount,status,created_date,due_date,settled_date,note`
@@ -323,12 +366,110 @@ Editing and deletion are restricted to **open, untouched transactions only**:
 
 ---
 
-## 14. Local-First, Privacy & Permission Guardrails
+## 15. UI Engineering Rules
+
+### Design Direction: PREMIUM FINANCIAL MINIMALISM
+Phittoos UI prioritizes clarity, calm confidence, and high data legibility over flashy ornamentation.
+
+### Semantic Color System
+Preserve current financial semantics strictly across all themes:
+- **Emerald / Green**: `LENT` direction / money to get back / positive balance
+- **Orange / Coral**: `BORROWED` direction / money owed / negative balance
+- **Red**: Real overdue states and error validations
+- **Amber / Yellow**: Partial repayments and cautionary alerts
+
+### Non-Negotiable UI Protection
+UI changes must **NEVER** alter or introduce calculations that affect:
+- Friend or dashboard balances
+- Repayment calculations
+- Settlement calculations
+- Mixed-direction bulk settlement safety
+- Transaction status transitions
+- Due-date normalization and state calculations
+- Historical data records
+- Room database persistence
+
+### Visual Restraint Guidelines
+- Avoid gratuitous glassmorphism, neumorphism, claymorphism, maximalism, heavy blurred surfaces, or ornamental gradient overlays.
+- Do not introduce decorative colors that compete with or dilute the financial semantics of Emerald and Orange.
+
+---
+
+## 16. Accessibility & Inclusivity Rules
+
+Whenever modifying or creating UI components, verify:
+- **Readable Contrast**: Text and icons must maintain strong, readable contrast against backgrounds across both Light and Dark modes.
+- **Touch Target Sizes**: All interactive elements (buttons, chips, list items, icons) must meet a minimum practical touch target size of 48dp x 48dp.
+- **Dynamic Text Scaling**: Layouts must adapt gracefully to user-configured font scaling (SP) without clipping, overlap, or truncation.
+- **Theme Support**: Seamless readability in both Light and Dark modes without unstyled elements.
+- **System Bar Insets**: Respect edge-to-edge window insets (`contentWindowInsets`, status bar, navigation bar).
+- **Screen Reader Semantics**: Provide descriptive `contentDescription` on non-decorative images and icon buttons.
+- **Reduced Animation**: Gracefully respect system-level reduced or disabled animation settings.
+- **Color Independence**: Color must never be the sole indicator of financial state. Always pair color with text labels, status badges, or direction icons.
+- **Honest Verification**: Do not claim formal WCAG compliance levels unless explicitly measured using testing tools.
+
+---
+
+## 17. Security & Privacy Engineering Gate
+
+Every code change must be evaluated against these local security and privacy checks:
+
+### Current-App Security Checks
+- **AndroidManifest Exported Components**: Every activity, receiver, or provider must declare `android:exported="false"` unless explicitly designed for system interaction.
+- **FileProvider Configuration**: `FileProvider` paths in `res/xml/file_paths.xml` must be strictly scoped to temporary cache directories for SAF operations.
+- **Permissions**: Preserve least-privilege principles. Do not request permissions that are not strictly necessary. (Currently, only runtime `POST_NOTIFICATIONS` is requested on Android 13+).
+- **Exported Financial Data**: Exports are user-initiated only via native SAF file pickers; never write financial data to unsecured shared storage.
+- **Sensitive Logging Prohibition**: **NEVER** log sensitive personal or financial information:
+  - Friend names
+  - Net balances
+  - Transaction amounts or repayment amounts
+  - Transaction notes
+  - Raw JSON backup contents
+- **Secrets Management**: Zero hardcoded secrets, tokens, or credentials in source code or resources. Never request, print, commit, or expose signing, keystore, or API secrets.
+- **Dependencies**: Scrutinize third-party library additions for security, privacy, and necessity.
+- **Network Invariant**: The app must not declare `android.permission.INTERNET` in V1. If networking is ever authorized in a future task, cleartext traffic must remain disabled (`usesCleartextTraffic="false"`).
+- **Auto Backup Policy**: Review `fullBackupContent` and `dataExtractionRules` to ensure financial data is handled consistently with user expectations.
+- **Compliance Honesty**: Do not make unsubstantiated claims of legal or DPDP compliance solely from technical source checks.
+
+---
+
+## 18. Future / When Applicable Security & Capabilities
+
+> **NOTE: FUTURE / WHEN APPLICABLE ONLY**
+> The items below are NOT present in current V1. They apply exclusively when a future task explicitly authorizes shared, cloud, or monetization features.
+
+### When Cloud / Shared Functionality Is Authorized
+When a scoped future task explicitly introduces cloud sync or multi-user sharing:
+1. **Authentication**: Enforce robust authentication via Jetpack Credential Manager / Google Sign-In.
+2. **Server-Side Authorization**: Enforce strict server-side rules (e.g., Firestore rules) validating user ownership of all read/write paths.
+3. **IDOR / BOLA Prevention**: Test against Broken Object Level Authorization across friend IDs and transaction IDs.
+4. **Token Security**: Store auth tokens securely in Android EncryptedSharedPreferences / Keystore; implement rotation.
+5. **Invite & Share Authorization**: One-time, tamper-proof, cryptographically signed share links with explicit expiry.
+6. **Replay Protection**: Protect sync payloads with server-verified timestamps and nonces.
+7. **Sync Idempotency**: Deduplicate incoming operations to prevent double-charging or repeated repayments.
+8. **Deterministic Conflict Strategy**: Define explicit, predictable conflict resolution (e.g., last-write-wins or client-reconciled).
+9. **Account Deletion & Data Wipe**: Implement complete, verifiable data deletion complying with store policies.
+10. **DPDP & Privacy Architecture**: Ensure consent management, data minimization, and audit trails.
+11. **Abuse Mitigation**: Implement client and backend rate limiting to mitigate denial-of-service and credential brute-forcing.
+
+### When Billing / Monetization Is Authorized
+When a scoped future task explicitly introduces in-app billing or subscriptions:
+1. **Entitlement Validation**: Verify purchase tokens cryptographically via Google Play Billing APIs.
+2. **Tampering Protection**: Guard against spoofed purchase payloads and signature manipulation.
+3. **Restore Purchases**: Implement a reliable "Restore Purchases" flow.
+4. **Duplicate Purchase Handling**: Gracefully handle idempotent pending purchases and already-owned entitlements.
+5. **Server Webhook Verification**: Validate backend webhook events if a payment server is involved.
+
+*Rule*: Do NOT implement, reference, or imply any of these features in current V1 documentation or code unless explicitly assigned.
+
+---
+
+## 19. Local-First, Privacy & Permission Guardrails (V1 Current)
 
 ### Network & Privacy
 - **Zero Network Permissions**: The app does **not** declare `android.permission.INTERNET`.
 - **No Cloud Sync / No Analytics / No Ads**: All computation and storage remain strictly on-device in Room SQLite and SharedPreferences.
-- **Reliability Scores Private**: Friend reliability ratings (`ReliabilityEngine`) are private to the device owner ("*Only you can see this*") and must never be shared or sent to anyone.
+- **Reliability Scores Private**: Friend reliability ratings (`ReliabilityEngine`) are private to the device owner ("*Only you can see this*") and must never be shared or transmitted.
 
 ### Permissions
 - **`POST_NOTIFICATIONS`**: The only runtime permission requested (Android 13+) for local overdue reminders.
@@ -339,7 +480,7 @@ Editing and deletion are restricted to **open, untouched transactions only**:
 
 ---
 
-## 15. Verification & Testing Standards
+## 20. Verification & Testing Standards
 
 ### Test Execution Command
 Run the JVM unit and Robolectric test suite:
@@ -347,9 +488,8 @@ Run the JVM unit and Robolectric test suite:
 gradle :app:testDebugUnitTest
 ```
 
-### Prohibited Test Patterns
-- **NO Android Emulator or ADB**: The execution environment does not have an emulator or ADB. Do not run instrumented tests in `androidTest/`.
-- Use **Robolectric** for Android component and lifecycle testing.
+### Durable Verification Rule
+Use the verification environment actually available for the task. Never claim emulator, ADB, USB-device, or physical-device verification unless it was actually performed. If physical verification is required but unavailable, report **NOT VERIFIABLE** rather than **PASS**.
 
 ### Key Existing Test Suites
 - `PhittoosAccountingEngineTest`: Core accounting invariants, directions, and net balances.
@@ -372,7 +512,7 @@ compile_applet
 
 ---
 
-## 16. Operating Modes & Review Checklist
+## 21. Operating Modes & Review Checklist
 
 ### Pre-Commit Agent Review Checklist
 Before concluding any task, verify:
@@ -388,13 +528,17 @@ Before concluding any task, verify:
 - [ ] Only open, untouched transactions can be edited or deleted.
 - [ ] Room migrations exist for any schema alterations (zero destructive migrations).
 - [ ] JSON backup and CSV export formats remain consistent.
-- [ ] No `INTERNET` permission added to `AndroidManifest.xml`.
+- [ ] No financial integrity release blockers triggered.
+- [ ] UI preserves Premium Financial Minimalism and semantic colors (Emerald, Orange, Red, Amber).
+- [ ] Accessibility: Readable contrast, 48dp touch targets, text scaling, Dark mode, system bar insets.
+- [ ] Security & Privacy: No sensitive logging, `exported="false"` on components, no secrets, no `INTERNET` permission in V1.
+- [ ] Doer / Checker model observed: Diff inspected, edge cases tested, no unrelated changes.
 - [ ] `gradle :app:testDebugUnitTest` passes with zero failures.
 - [ ] `compile_applet` succeeds.
 
 ---
 
-## 17. Stop & Escalation Protocol
+## 22. Stop & Escalation Protocol
 
 ### When to Stop
 Stop immediately and present results when:
@@ -405,7 +549,8 @@ Stop immediately and present results when:
 
 ### When to Report BLOCKED
 Report `BLOCKED` with an explanation if:
-1. The requested change directly violates core product identity (e.g., requests to add UPI payments, group splitting, or cloud database sync).
-2. The requested change requires destructive data loss without a migration path.
-3. There is an irreconcilable conflict between prompt specifications and repository accounting invariants.
-4. A persistent build or environment error cannot be resolved within 3 iterations.
+1. The requested change directly violates permanent product anti-goals (e.g., requests to add banking, group expense splitting, loan/credit lending, or payment processing).
+2. Cloud or shared functionality is requested without an explicitly authorized, scoped future task.
+3. The requested change requires destructive data loss without a migration path.
+4. There is an irreconcilable conflict between prompt specifications and repository accounting invariants.
+5. A persistent build or environment error cannot be resolved within 3 iterations.
