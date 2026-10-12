@@ -17,6 +17,8 @@ Phittoos is a private personal money ledger where correctness is paramount. Acci
   4. The full test suite (`gradle :app:testDebugUnitTest`) passes with zero regressions.
   5. The application builds cleanly (`compile_applet`).
 
+For explicitly documentation-only tasks, the build, runtime-test, and code-change verification requirements throughout this guide are **NOT APPLICABLE**. Validate the documentation, authorized-file scope, and final diff instead; report those checks without claiming application verification. This exception does not relax financial-safety requirements for code changes.
+
 ---
 
 ## 2. Product Boundaries
@@ -120,6 +122,12 @@ Before editing or creating code, identify and document:
 ### Change Discipline & Test Integrity
 - **No Unrelated Refactoring**: Do not reformat unrelated files, clean up unrelated methods, or change architectural patterns outside the scope of the assigned task.
 - **Never Weaken Tests**: Never weaken test assertions, remove tests, or widen floating-point tolerances to make a failing test pass. If a test fails, find the root cause in the code or update the test only if the underlying business specification has legitimately changed.
+
+### Failure-Loop Policy
+- Make at most **8 meaningful troubleshooting or implementation attempts per task**. An attempt is a distinct hypothesis or corrective action followed by observable verification. Never rerun the same failed action without a changed hypothesis.
+- Record the diagnosis, validation result, and measurable progress for each attempt. Progress means evidence such as resolving a diagnosed failure, reducing failing checks without weakening them, or verifying a required behavior.
+- Stop and report `BLOCKED` after **2 consecutive attempts without measurable progress**, or when the 8-attempt maximum is reached with required work unresolved, whichever occurs first.
+- Never weaken financial validations, accounting invariants, or tests to obtain a passing result. Attempt limits do not override financial-integrity release blockers.
 
 ---
 
@@ -440,14 +448,17 @@ Every code change must be evaluated against these local security and privacy che
 
 ### When Cloud / Shared Functionality Is Authorized
 When a scoped future task explicitly introduces cloud sync or multi-user sharing:
-1. **Authentication**: Enforce robust authentication via Jetpack Credential Manager / Google Sign-In.
-2. **Server-Side Authorization**: Enforce strict server-side rules (e.g., Firestore rules) validating user ownership of all read/write paths.
+
+Technology choices for future V2 authentication, backend, credential storage, invites, and conflict resolution require explicit approval in that future task. The following requirements do not approve or mandate a provider, framework, storage API, invite mechanism, or conflict-resolution algorithm.
+
+1. **Authentication**: Verify user identity securely and enforce appropriate session lifecycle and revocation controls.
+2. **Server-Side Authorization**: Enforce authorization at the trusted backend, validating user ownership and permitted access for all read/write paths.
 3. **IDOR / BOLA Prevention**: Test against Broken Object Level Authorization across friend IDs and transaction IDs.
-4. **Token Security**: Store auth tokens securely in Android EncryptedSharedPreferences / Keystore; implement rotation.
-5. **Invite & Share Authorization**: One-time, tamper-proof, cryptographically signed share links with explicit expiry.
-6. **Replay Protection**: Protect sync payloads with server-verified timestamps and nonces.
+4. **Token Security**: Protect credentials and tokens in storage and use; implement rotation and revocation without prescribing a storage technology.
+5. **Invite & Share Authorization**: Enforce authorized recipients and access scope, prevent tampering and reuse, and provide explicit expiry and revocation for invitations and shared access.
+6. **Replay Protection**: Detect and reject replayed sync requests at the trusted backend while preserving authorized retries.
 7. **Sync Idempotency**: Deduplicate incoming operations to prevent double-charging or repeated repayments.
-8. **Deterministic Conflict Strategy**: Define explicit, predictable conflict resolution (e.g., last-write-wins or client-reconciled).
+8. **Deterministic Conflict Strategy**: Define and test explicit, predictable conflict handling that preserves accounting invariants and financial history; approve the strategy before implementation.
 9. **Account Deletion & Data Wipe**: Implement complete, verifiable data deletion complying with store policies.
 10. **DPDP & Privacy Architecture**: Ensure consent management, data minimization, and audit trails.
 11. **Abuse Mitigation**: Implement client and backend rate limiting to mitigate denial-of-service and credential brute-forcing.
@@ -553,4 +564,46 @@ Report `BLOCKED` with an explanation if:
 2. Cloud or shared functionality is requested without an explicitly authorized, scoped future task.
 3. The requested change requires destructive data loss without a migration path.
 4. There is an irreconcilable conflict between prompt specifications and repository accounting invariants.
-5. A persistent build or environment error cannot be resolved within 3 iterations.
+5. The Failure-Loop Policy requires stopping with required work unresolved.
+
+---
+
+## 23. Required Final Engineering Report
+
+Every final engineering report must use the exact headings below. State `Unchanged` or `NOT APPLICABLE` with a reason where appropriate; never imply that an unrun check passed. For an explicitly documentation-only task, report documentation validation and mark Android builds and runtime tests `NOT APPLICABLE — not run (documentation-only scope)`.
+
+### STATUS
+State `PASS` or `BLOCKED` for the authorized task scope and identify any unmet requirement.
+
+### TASK
+Describe the requested outcome and authorized scope.
+
+### ROOT CAUSE
+Explain the evidence-backed cause of the issue or documentation gap; identify any unresolved uncertainty.
+
+### ACCOUNTING IMPACT
+Describe effects on balances, remaining amounts, directions, repayments, settlements, and accounting invariants, or confirm they are unchanged.
+
+### CHANGES
+List the exact files and changes. Separate pre-existing changes from changes made by this task.
+
+### VALIDATION
+Report checks actually performed, their outcomes, and the final diff and Git status review, including untracked files.
+
+### TESTS
+List commands run and passed, failed, skipped, or unrun outcomes. Include test counts when available and distinguish repository failures from environment limitations.
+
+### DATABASE IMPACT
+Describe schema, migration, persistence, and backup compatibility effects, or confirm they are unchanged.
+
+### SECURITY/PRIVACY IMPACT
+Describe effects on permissions, credentials, data exposure, logging, and privacy boundaries, or confirm they are unchanged.
+
+### CHECKER VERDICT
+State `PASS` or `REJECTED` with the evidence from reviewing scope, the final diff, applicable invariants, and validation.
+
+### REMAINING RISKS
+List unresolved failures, limitations, and required follow-up; state explicitly when none were identified within scope.
+
+### STOP REASON
+Explain whether the authorized task is complete or blocked. For a failure-loop stop, include the attempt count, consecutive attempts without progress, and the unmet requirement.
