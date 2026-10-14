@@ -1,0 +1,118 @@
+name: Android build baseline
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, chore/build-ci-baseline]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Compile, unit tests and lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI_LOG_DIR: ${{ runner.temp }}/phittoos-ci
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+
+      - name: Verify pinned Gradle 9.3.1 integrity
+        run: |
+          echo 'b3a875ddc1f044746e1b1a55f645584505f4a10438c1afea9f15e92a7c42ec13  gradle/wrapper/gradle-wrapper.jar' | sha256sum --check --strict
+          grep -Fx 'distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-bin.zip' gradle/wrapper/gradle-wrapper.properties
+          grep -Fx 'distributionSha256Sum=b266d5ff6b90eada6dc3b20cb090e3731302e553a27c5d3e4df1f0d76beaff06' gradle/wrapper/gradle-wrapper.properties
+          test -x ./gradlew
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle caching
+        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4.4.3
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          cmdline-tools-version: '16111833'
+          packages: 'platform-tools platforms;android-36.1 build-tools;36.0.0'
+          log-accepted-android-sdk-licenses: false
+
+      - name: Record toolchain and source
+        run: |
+          mkdir -p "$CI_LOG_DIR"
+          git rev-parse HEAD | tee "$CI_LOG_DIR/source-sha.txt"
+          java -version 2>&1 | tee "$CI_LOG_DIR/java.log"
+          ./gradlew --version 2>&1 | tee "$CI_LOG_DIR/gradle.log"
+
+      # Compile/test/lint avoid APK packaging and signing. No keystore is generated
+      # or provisioned, and the existing signing configurations are preserved.
+      - name: Compile Android code
+        id: compile
+        continue-on-error: true
+        run: |
+          mkdir -p "$CI_LOG_DIR"
+          set -o pipefail
+          ./gradlew --no-daemon --no-configuration-cache --console=plain :app:compileDebugKotlin :app:compileDebugJavaWithJavac 2>&1 | tee "$CI_LOG_DIR/compile.log"
+
+      - name: Run existing JVM and Robolectric tests
+        id: tests
+        continue-on-error: true
+        run: |
+          mkdir -p "$CI_LOG_DIR"
+          set -o pipefail
+          ./gradlew --no-daemon --no-configuration-cache --console=plain :app:testDebugUnitTest 2>&1 | tee "$CI_LOG_DIR/tests.log"
+
+      - name: Run Android lint
+        id: lint
+        continue-on-error: true
+        run: |
+          mkdir -p "$CI_LOG_DIR"
+          set -o pipefail
+          ./gradlew --no-daemon --no-configuration-cache --console=plain :app:lintDebug 2>&1 | tee "$CI_LOG_DIR/lint.log"
+
+      - name: Retain reports and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-ci-reports-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/reports/lint-results*
+            ${{ runner.temp }}/phittoos-ci/
+
+      - name: Require all validation checks to pass
+        if: always()
+        env:
+          COMPILE_OUTCOME: ${{ steps.compile.outcome }}
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
+        run: |
+          echo "Compilation: $COMPILE_OUTCOME; unit tests: $TEST_OUTCOME; lint: $LINT_OUTCOME"
+          test "$COMPILE_OUTCOME" = success
+          test "$TEST_OUTCOME" = success
+          test "$LINT_OUTCOME" = success
