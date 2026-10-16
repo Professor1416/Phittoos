@@ -14,6 +14,7 @@ import com.professor1416.phittoos.data.repository.PhittoosRepository
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.math.BigDecimal
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -115,6 +116,26 @@ object PhittoosBackupManager {
         val transactionCount: Int
     )
 
+    // The V1 exporter writes JSON numbers. Avoid opt/get coercions silently changing IDs,
+    // amounts or dates; keep absent/null optional fields compatible with the existing parser.
+    private fun JSONObject.backupDouble(key: String): Double {
+        val value = get(key)
+        require(value is Number)
+        return value.toDouble().also { require(it.isFinite()) }
+    }
+
+    private fun JSONObject.backupLong(key: String): Long {
+        val value = get(key)
+        require(value is Number)
+        val exact = BigDecimal(value.toString()).longValueExact()
+        require(exact == value.toLong()) // Same Long must reach the existing restore parser.
+        return exact
+    }
+
+    private fun JSONObject.validateOptionalTimestamp(key: String) {
+        if (!isNull(key)) backupLong(key)
+    }
+
     fun validateBackup(jsonString: String): Result<BackupSummary> {
         val trimmed = jsonString.trim()
         if (!trimmed.startsWith("{")) {
@@ -133,6 +154,7 @@ object PhittoosBackupManager {
                 return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
             }
             val metadata = root.getJSONObject("metadata")
+            metadata.validateOptionalTimestamp("createdAt")
             val backupVersion = metadata.optInt("backupVersion", -1)
             if (backupVersion == -1) {
                 return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
@@ -146,8 +168,9 @@ object PhittoosBackupManager {
                 return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
             }
             val prefsJson = root.getJSONObject("preferences")
-            val userName = prefsJson.optString("userName", "")
-            if (userName.isBlank()) {
+            // Onboarding's Skip action legitimately leaves the exported profile name empty.
+            val userName = prefsJson.opt("userName")
+            if (userName !is String) {
                 return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
             }
 
@@ -159,7 +182,7 @@ object PhittoosBackupManager {
             val friendIds = mutableSetOf<Long>()
             for (i in 0 until friendsArray.length()) {
                 val fJson = friendsArray.getJSONObject(i)
-                val id = fJson.optLong("id", -1L)
+                val id = fJson.backupLong("id")
                 if (id <= 0L) {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
@@ -180,9 +203,10 @@ object PhittoosBackupManager {
             }
             val txsArray = root.getJSONArray("transactions")
             val transactionIds = mutableSetOf<Long>()
+            val transactionsById = mutableMapOf<Long, JSONObject>()
             for (i in 0 until txsArray.length()) {
                 val tJson = txsArray.getJSONObject(i)
-                val id = tJson.optLong("id", -1L)
+                val id = tJson.backupLong("id")
                 if (id <= 0L) {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
@@ -191,12 +215,12 @@ object PhittoosBackupManager {
                 }
                 transactionIds.add(id)
 
-                val friendId = tJson.optLong("friendId", -1L)
+                val friendId = tJson.backupLong("friendId")
                 if (friendId <= 0L || friendId !in friendIds) {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
 
-                val amount = tJson.optDouble("amount", -1.0)
+                val amount = tJson.backupDouble("amount")
                 if (amount <= 0.0 || amount.isNaN() || amount.isInfinite()) {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
@@ -215,7 +239,7 @@ object PhittoosBackupManager {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
 
-                val paidAmount = if (tJson.isNull("paidAmount")) null else tJson.getDouble("paidAmount")
+                val paidAmount = if (tJson.isNull("paidAmount")) null else tJson.backupDouble("paidAmount")
                 if (paidAmount != null) {
                     if (paidAmount < 0.0 || paidAmount.isNaN() || paidAmount.isInfinite()) {
                         return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
@@ -224,6 +248,18 @@ object PhittoosBackupManager {
                         return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                     }
                 }
+                // V1 optional fields may be absent/null; present timestamps must not be coerced.
+                for (field in listOf("createdDate", "dueDate", "settledAt")) {
+                    tJson.validateOptionalTimestamp(field)
+                }
+                val status = TransactionStatus.valueOf(statusStr)
+                if (status == TransactionStatus.OPEN) {
+                    require(tJson.isNull("settledAt") && (paidAmount == null || paidAmount < amount))
+                } else if (status == TransactionStatus.CONFIRMED) {
+                    // Early status-only settlements and migration 1->2 did not backfill paid/time/history.
+                    require(paidAmount == null || paidAmount == amount)
+                }
+                transactionsById[id] = tJson
             }
 
             // 5. Activities Section
@@ -234,7 +270,7 @@ object PhittoosBackupManager {
             val activityIds = mutableSetOf<Long>()
             for (i in 0 until actsArray.length()) {
                 val aJson = actsArray.getJSONObject(i)
-                val id = aJson.optLong("id", -1L)
+                val id = aJson.backupLong("id")
                 if (id <= 0L) {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
@@ -250,12 +286,12 @@ object PhittoosBackupManager {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
 
-                val friendId = aJson.optLong("friendId", -1L)
+                val friendId = aJson.backupLong("friendId")
                 if (friendId <= 0L || friendId !in friendIds) {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
 
-                val transactionId = if (aJson.isNull("transactionId")) null else aJson.getLong("transactionId")
+                val transactionId = if (aJson.isNull("transactionId")) null else aJson.backupLong("transactionId")
                 if (transactionId != null && transactionId !in transactionIds) {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
                 }
@@ -278,9 +314,32 @@ object PhittoosBackupManager {
                     }
                 }
 
-                val amountVal = if (aJson.isNull("amount")) null else aJson.getDouble("amount")
+                val amountVal = if (aJson.isNull("amount")) null else aJson.backupDouble("amount")
                 if (amountVal != null && (amountVal <= 0.0 || amountVal.isNaN() || amountVal.isInfinite())) {
                     return Result.failure(Exception("This isn’t a valid Phittoos backup file. Select a backup created using ‘Back up your data’."))
+                }
+                aJson.validateOptionalTimestamp("createdAt")
+                if (transactionId != null) {
+                    val transaction = transactionsById.getValue(transactionId)
+                    require(friendId == transaction.backupLong("friendId"))
+                    val type = ActivityType.valueOf(typeStr)
+                    val financialEvent = type == ActivityType.TRANSACTION_CREATED ||
+                        type == ActivityType.PARTIAL_REPAYMENT || type == ActivityType.SETTLED
+                    if (financialEvent) {
+                        require(directionStr == null || directionStr == transaction.getString("direction"))
+                        val principal = transaction.backupDouble("amount")
+                        if (amountVal != null) {
+                            if (type == ActivityType.TRANSACTION_CREATED) {
+                                require(amountVal == principal)
+                            } else {
+                                // Repayment events store the submitted delta (including the repository's
+                                // 0.0001 overpayment tolerance), not the original/current remaining amount.
+                                require(amountVal <= principal + 0.0001)
+                            }
+                        }
+                        require(type != ActivityType.SETTLED || transaction.getString("status") != TransactionStatus.OPEN.name)
+                    }
+                    // Reminder amounts/directions are historical snapshots: an unpaid entry may later be edited.
                 }
             }
 
