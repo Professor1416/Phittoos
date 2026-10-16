@@ -5,11 +5,17 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.professor1416.phittoos.R
 import com.professor1416.phittoos.data.db.AppDatabase
+import com.professor1416.phittoos.data.model.ActivityType
+import com.professor1416.phittoos.data.model.effectiveRemainingAmount
 import com.professor1416.phittoos.data.model.TransactionDirection
 import com.professor1416.phittoos.data.model.TransactionStatus
 import com.professor1416.phittoos.data.repository.PhittoosRepository
 import com.professor1416.phittoos.ui.screens.frienddetail.SettlementCelebrationEvent
+import com.professor1416.phittoos.ui.viewmodel.FriendDetailUiState
 import com.professor1416.phittoos.ui.viewmodel.FriendDetailViewModel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
@@ -82,7 +88,7 @@ class SettlementCelebrationTest {
         vmLent.settleTransaction(txLent)
         advanceUntilIdle()
 
-        val stateLent = vmLent.uiState.first { it.openTransactionsCount == 0 }
+        val stateLent = awaitCelebration(vmLent)
         assertNotNull("Celebration event must be emitted for last LENT settlement", stateLent.celebrationEvent)
         assertNull("Generic settlement toast must be suppressed when celebration is active", stateLent.toastMessage)
         assertEquals(0, stateLent.openTransactionsCount)
@@ -99,7 +105,7 @@ class SettlementCelebrationTest {
         vmBorrowed.settleTransaction(txBorrowed)
         advanceUntilIdle()
 
-        val stateBorrowed = vmBorrowed.uiState.first { it.openTransactionsCount == 0 }
+        val stateBorrowed = awaitCelebration(vmBorrowed)
         assertNotNull("Celebration event must be emitted for last BORROWED settlement", stateBorrowed.celebrationEvent)
         assertNull("Generic settlement toast must be suppressed when celebration is active", stateBorrowed.toastMessage)
         assertEquals(0, stateBorrowed.openTransactionsCount)
@@ -150,7 +156,7 @@ class SettlementCelebrationTest {
         vm.settleAllSameDirection()
         advanceUntilIdle()
 
-        val state = vm.uiState.first { it.openTransactionsCount == 0 }
+        val state = awaitCelebration(vm)
         assertNotNull("Celebration event must be emitted for bulk settlement", state.celebrationEvent)
         assertEquals(0, state.openTransactionsCount)
         assertNull("Toast must be suppressed when celebration is shown", state.toastMessage)
@@ -164,33 +170,111 @@ class SettlementCelebrationTest {
     fun test04_finalRepaymentTriggers_partialRepaymentDoesNot() = runTest {
         val friendId = repository.insertFriend("Esha")
         val txId = repository.addTransaction(friendId, 1000.0, TransactionDirection.LENT, "Trip share")
+        val otherFriend = repository.insertFriend("Unrelated synthetic friend")
+        repository.addTransaction(otherFriend, 75.5, TransactionDirection.BORROWED, "Untouched")
+        val friendsBefore = db.friendDao().getAllFriendsList()
+        val otherRowsBefore = db.transactionDao().getAllTransactionsOrdered().filter { it.id != txId }
+        val otherHistoryBefore = db.activityDao().getAllActivitiesList().filter { it.transactionId != txId }
 
         val vm = FriendDetailViewModel(repository, friendId)
         vm.onScreenResumed()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }
-        vm.uiState.first { it.friend != null && it.timeline.isNotEmpty() }
+        val celebrationIds = mutableSetOf<Long>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm.uiState.collect { state -> state.celebrationEvent?.let { celebrationIds += it.id } }
+        }
+        awaitActual {
+            vm.uiState.first { !it.isLoading && it.timeline.any { tx -> tx.id == txId } }
+        }
+        var accepted = 0
+        var rejected = 0
+        suspend fun repay(amount: Double): Boolean {
+            val result = CompletableDeferred<Boolean>()
+            vm.recordRepayment(txId, amount,
+                onSuccess = { accepted++; result.complete(true) },
+                onError = { rejected++; result.complete(false) })
+            return awaitActual { result.await() }
+        }
 
-        // 1. Partial repayment: 400 of 1000
-        vm.recordRepayment(txId, 400.0)
-        advanceUntilIdle()
-
-        val statePartial = vm.uiState.first { it.toastMessage != null }
+        // A callback confirms repository completion; Room and operation-state flows may arrive separately.
+        assertTrue(repay(400.0))
+        val statePartial = awaitActual {
+            vm.uiState.first { state ->
+                state.openTransactionsCount == 1 && state.settlingTransactionIds.isEmpty() &&
+                    state.toastMessage != null && state.timeline.any {
+                        it.id == txId && it.status == TransactionStatus.OPEN && it.paidAmount == 400.0
+                    }
+            }
+        }
         assertNull("Partial repayment must NOT trigger celebration", statePartial.celebrationEvent)
+        assertTrue("No celebration may have been emitted during partial repayment", celebrationIds.isEmpty())
         assertEquals(1, statePartial.openTransactionsCount)
         assertNotNull("Partial repayment toast must be shown", statePartial.toastMessage)
         assertEquals(R.string.msg_repayment_recorded, statePartial.toastMessage?.resId)
+        val partialTx = db.transactionDao().getTransactionById(txId)!!
+        assertEquals(TransactionStatus.OPEN, partialTx.status)
+        assertEquals(400.0, partialTx.paidAmount!!, 0.0)
+        assertEquals(600.0, partialTx.effectiveRemainingAmount, 0.0)
+        assertNull(partialTx.settledAt)
+        assertEquals(1, db.transactionDao().getOpenCountForFriend(friendId))
+        val partialHistory = db.activityDao().getAllActivitiesList().filter { it.transactionId == txId }.sortedBy { it.id }
+        assertEquals(listOf(ActivityType.TRANSACTION_CREATED, ActivityType.PARTIAL_REPAYMENT), partialHistory.map { it.type })
+        assertEquals(400.0, partialHistory.last().amount!!, 0.0)
 
         vm.clearToast()
-        advanceUntilIdle()
+        awaitActual { vm.uiState.first { it.toastMessage == null } }
 
-        // 2. Final repayment: remaining 600
-        vm.recordRepayment(txId, 600.0)
-        advanceUntilIdle()
-
-        val stateFinal = vm.uiState.first { it.openTransactionsCount == 0 }
+        assertTrue(repay(600.0))
+        // OPEN count alone can select an intermediate snapshot before the celebration is combined.
+        val stateFinal = awaitCelebration(vm)
         assertNotNull("Final repayment that closes the last open transaction must celebrate", stateFinal.celebrationEvent)
         assertEquals(0, stateFinal.openTransactionsCount)
         assertNull("Final repayment toast suppressed when celebrating", stateFinal.toastMessage)
+        val eventId = stateFinal.celebrationEvent!!.id
+        assertEquals(setOf(eventId), celebrationIds)
+        val finalTx = db.transactionDao().getTransactionById(txId)!!
+        assertEquals(partialTx.copy(paidAmount = 1000.0, status = TransactionStatus.CONFIRMED, settledAt = finalTx.settledAt), finalTx)
+        assertEquals(TransactionStatus.CONFIRMED, finalTx.status)
+        assertEquals(1000.0, finalTx.paidAmount!!, 0.0)
+        assertEquals(0.0, finalTx.effectiveRemainingAmount, 0.0)
+        assertNotNull(finalTx.settledAt)
+        assertEquals(0, db.transactionDao().getOpenCountForFriend(friendId))
+        val finalHistory = db.activityDao().getAllActivitiesList().filter { it.transactionId == txId }.sortedBy { it.id }
+        assertEquals(partialHistory, finalHistory.take(2))
+        assertEquals(listOf(ActivityType.TRANSACTION_CREATED, ActivityType.PARTIAL_REPAYMENT, ActivityType.SETTLED), finalHistory.map { it.type })
+        val finalActivity = finalHistory.last()
+        assertEquals(600.0, finalActivity.amount!!, 0.0)
+        assertEquals("final_repayment", finalActivity.note)
+        assertEquals(finalTx.settledAt, finalActivity.createdAt)
+        assertTrue(finalHistory.all { it.friendId == friendId && it.transactionId == txId && it.direction == TransactionDirection.LENT })
+        assertEquals(friendsBefore, db.friendDao().getAllFriendsList())
+        assertEquals(otherRowsBefore, db.transactionDao().getAllTransactionsOrdered().filter { it.id != txId })
+        assertEquals(otherHistoryBefore, db.activityDao().getAllActivitiesList().filter { it.transactionId != txId })
+
+        // A repeat must complete as a rejection, retain the original event ID, and change no history.
+        val settledRows = db.transactionDao().getAllTransactionsOrdered()
+        val settledHistory = db.activityDao().getAllActivitiesList()
+        assertFalse(repay(600.0))
+        val repeated = awaitActual {
+            vm.uiState.first { it.settlingTransactionIds.isEmpty() && it.toastMessage != null && it.celebrationEvent?.id == eventId }
+        }
+        assertEquals(eventId, repeated.celebrationEvent!!.id)
+        assertEquals(settledRows, db.transactionDao().getAllTransactionsOrdered())
+        assertEquals(settledHistory, db.activityDao().getAllActivitiesList())
+
+        vm.dismissCelebration(eventId)
+        awaitActual { vm.uiState.first { it.celebrationEvent == null } }
+        vm.clearToast()
+        awaitActual { vm.uiState.first { it.toastMessage == null } }
+        assertFalse(repay(600.0))
+        val afterDismissedRepeat = awaitActual {
+            vm.uiState.first { it.settlingTransactionIds.isEmpty() && it.toastMessage != null }
+        }
+        assertNull("An already-settled transaction must not produce a new celebration", afterDismissedRepeat.celebrationEvent)
+        assertEquals(setOf(eventId), celebrationIds)
+        assertEquals(2, accepted)
+        assertEquals(2, rejected)
+        assertEquals(settledRows, db.transactionDao().getAllTransactionsOrdered())
+        assertEquals(settledHistory, db.activityDao().getAllActivitiesList())
     }
 
     /**
@@ -225,7 +309,7 @@ class SettlementCelebrationTest {
         vm.settleTransaction(txBorrowed)
         advanceUntilIdle()
 
-        val stateFinal = vm.uiState.first { it.openTransactionsCount == 0 }
+        val stateFinal = awaitCelebration(vm)
         assertNotNull("Must celebrate when both sides are finally closed (open count reaches 0)", stateFinal.celebrationEvent)
         assertEquals(0, stateFinal.openTransactionsCount)
     }
@@ -288,7 +372,7 @@ class SettlementCelebrationTest {
         vm.settleTransaction(txId)
         advanceUntilIdle()
 
-        val state = vm.uiState.first { it.openTransactionsCount == 0 }
+        val state = awaitCelebration(vm)
         assertNotNull(state.celebrationEvent)
         assertEquals(0, state.openTransactionsCount)
     }
@@ -436,5 +520,19 @@ class SettlementCelebrationTest {
         advanceUntilIdle()
         val stateAfterDismiss = vm.uiState.first { it.celebrationEvent == null }
         assertNull("Matching event ID dismisses the celebration", stateAfterDismiss.celebrationEvent)
+    }
+
+    // Use a wall-clock timeout: runTest's virtual clock does not own Room's executors.
+    private suspend fun <T> awaitActual(block: suspend () -> T): T = withContext(Dispatchers.Default) {
+        withTimeout(5_000) { block() }
+    }
+
+    private suspend fun awaitCelebration(vm: FriendDetailViewModel): FriendDetailUiState = awaitActual {
+        vm.uiState.first { state ->
+            !state.isLoading && state.openTransactionsCount == 0 &&
+                state.settlingTransactionIds.isEmpty() && !state.isBulkSettling &&
+                state.celebrationEvent != null && state.timeline.isNotEmpty() &&
+                state.timeline.all { it.status == TransactionStatus.CONFIRMED && it.paidAmount == it.amount }
+        }
     }
 }
