@@ -123,7 +123,9 @@ fun SettingsScreen(
             val csv = pendingCsvData
             if (csv != null) {
                 try {
-                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    val stream = context.contentResolver.openOutputStream(uri)
+                        ?: throw java.io.IOException("Unable to open the selected file for writing.")
+                    stream.use { outputStream ->
                         outputStream.write(csv.toByteArray(Charsets.UTF_8))
                         outputStream.flush()
                     }
@@ -152,7 +154,9 @@ fun SettingsScreen(
             val json = pendingBackupData
             if (json != null) {
                 try {
-                    context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    val stream = context.contentResolver.openOutputStream(uri)
+                        ?: throw java.io.IOException("Unable to open the selected file for writing.")
+                    stream.use { outputStream ->
                         outputStream.write(json.toByteArray(Charsets.UTF_8))
                         outputStream.flush()
                     }
