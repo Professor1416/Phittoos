@@ -1,6 +1,7 @@
 package com.professor1416.phittoos
 
 import android.content.Context
+import android.os.Looper
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -9,6 +10,12 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.professor1416.phittoos.data.dao.ActivityDao
@@ -32,6 +39,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -40,6 +48,22 @@ class LayoutAndSystemInsetsTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private val viewModelStore = ViewModelStore()
+    private val viewModelJobs = mutableListOf<Job>()
+    private val showContent = mutableStateOf(true)
+    private var contentWasSet = false
+
+    private fun <T : ViewModel> own(viewModel: T): T {
+        viewModelStore.put("test-${viewModelJobs.size}", viewModel)
+        viewModelJobs += viewModel.viewModelScope.coroutineContext[Job]!!
+        return viewModel
+    }
+
+    private fun setTestContent(content: @Composable () -> Unit) {
+        composeTestRule.setContent { if (showContent.value) content() }
+        contentWasSet = true
+    }
 
     private lateinit var db: AppDatabase
     private lateinit var friendDao: FriendDao
@@ -65,7 +89,23 @@ class LayoutAndSystemInsetsTest {
 
     @After
     fun tearDown() {
-        db.close()
+        try {
+            // Dispose screen collectors before ending the ViewModels' ownership.
+            if (contentWasSet) {
+                composeTestRule.runOnIdle { showContent.value = false }
+                composeTestRule.waitForIdle()
+            }
+        } finally {
+            // These manually constructed ViewModels are not owned by the Compose activity.
+            composeTestRule.runOnUiThread { viewModelStore.clear() }
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                // Without mounted content, Compose does not drain pending Main callbacks.
+                shadowOf(Looper.getMainLooper()).idle()
+                viewModelJobs.all { it.isCancelled && it.isCompleted }
+            }
+            // A cancellation timeout must fail before closing a database still in use.
+            db.close()
+        }
     }
 
     @Test
@@ -78,9 +118,9 @@ class LayoutAndSystemInsetsTest {
             id
         }
 
-        val homeViewModel = HomeViewModel(repository, userPreferences)
+        val homeViewModel = own(HomeViewModel(repository, userPreferences))
 
-        composeTestRule.setContent {
+        setTestContent {
             PhittoosTheme(themeMode = AppThemeMode.LIGHT) {
                 HomeScreen(
                     viewModel = homeViewModel,
@@ -114,9 +154,9 @@ class LayoutAndSystemInsetsTest {
             friendId = repository.insertFriend("Rohan")
         }
 
-        val viewModel = AddTransactionViewModel(repository, initialFriendId = friendId)
+        val viewModel = own(AddTransactionViewModel(repository, initialFriendId = friendId))
 
-        composeTestRule.setContent {
+        setTestContent {
             PhittoosTheme(themeMode = AppThemeMode.LIGHT) {
                 AddTransactionScreen(
                     viewModel = viewModel,
@@ -151,9 +191,9 @@ class LayoutAndSystemInsetsTest {
             friendId = repository.insertFriend("Pooja")
         }
 
-        val viewModel = AddTransactionViewModel(repository, initialFriendId = friendId)
+        val viewModel = own(AddTransactionViewModel(repository, initialFriendId = friendId))
 
-        composeTestRule.setContent {
+        setTestContent {
             PhittoosTheme(themeMode = AppThemeMode.DARK) {
                 AddTransactionScreen(
                     viewModel = viewModel,
@@ -180,9 +220,9 @@ class LayoutAndSystemInsetsTest {
 
     @Test
     fun theme_rendersInBothLightAndDarkModesWithoutCrashing() {
-        val homeViewModel = HomeViewModel(repository, userPreferences)
+        val homeViewModel = own(HomeViewModel(repository, userPreferences))
 
-        composeTestRule.setContent {
+        setTestContent {
             PhittoosTheme(themeMode = AppThemeMode.DARK) {
                 HomeScreen(
                     viewModel = homeViewModel,

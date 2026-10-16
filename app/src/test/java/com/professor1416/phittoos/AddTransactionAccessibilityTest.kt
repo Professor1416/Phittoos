@@ -1,6 +1,7 @@
 package com.professor1416.phittoos
 
 import android.content.Context
+import android.os.Looper
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -17,6 +18,12 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.professor1416.phittoos.data.db.AppDatabase
@@ -38,6 +45,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -46,6 +54,22 @@ class AddTransactionAccessibilityTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private val viewModelStore = ViewModelStore()
+    private val viewModelJobs = mutableListOf<Job>()
+    private val showContent = mutableStateOf(true)
+    private var contentWasSet = false
+
+    private fun <T : ViewModel> own(viewModel: T): T {
+        viewModelStore.put("test-${viewModelJobs.size}", viewModel)
+        viewModelJobs += viewModel.viewModelScope.coroutineContext[Job]!!
+        return viewModel
+    }
+
+    private fun setTestContent(content: @Composable () -> Unit) {
+        composeTestRule.setContent { if (showContent.value) content() }
+        contentWasSet = true
+    }
 
     private lateinit var db: AppDatabase
     private lateinit var repository: PhittoosRepository
@@ -64,18 +88,34 @@ class AddTransactionAccessibilityTest {
             testFriendId = repository.insertFriend("Aman")
         }
 
-        viewModel = AddTransactionViewModel(repository, initialFriendId = testFriendId)
+        viewModel = own(AddTransactionViewModel(repository, initialFriendId = testFriendId))
         viewModel.selectFriend(Friend(id = testFriendId, name = "Aman"))
     }
 
     @After
     fun tearDown() {
-        db.close()
+        try {
+            // Dispose screen collectors before ending the ViewModels' ownership.
+            if (contentWasSet) {
+                composeTestRule.runOnIdle { showContent.value = false }
+                composeTestRule.waitForIdle()
+            }
+        } finally {
+            // These manually constructed ViewModels are not owned by the Compose activity.
+            composeTestRule.runOnUiThread { viewModelStore.clear() }
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                // Without mounted content, Compose does not drain pending Main callbacks.
+                shadowOf(Looper.getMainLooper()).idle()
+                viewModelJobs.all { it.isCancelled && it.isCompleted }
+            }
+            // A cancellation timeout must fail before closing a database still in use.
+            db.close()
+        }
     }
 
     @Test
     fun testQuickAmountChipsHaveAtLeast48dpTouchTargets() {
-        composeTestRule.setContent {
+        setTestContent {
             PhittoosTheme {
                 AddTransactionScreen(
                     viewModel = viewModel,
@@ -95,11 +135,11 @@ class AddTransactionAccessibilityTest {
 
     @Test
     fun testQuickAmountChipsIncrementAmountCorrectly() {
-        val job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+        val job = viewModel.viewModelScope.launch {
             viewModel.uiState.collect()
         }
 
-        composeTestRule.setContent {
+        setTestContent {
             PhittoosTheme {
                 AddTransactionScreen(
                     viewModel = viewModel,
@@ -124,7 +164,7 @@ class AddTransactionAccessibilityTest {
 
     @Test
     fun testDirectionSelectionExposedAsMutuallyExclusiveRadioGroup() {
-        composeTestRule.setContent {
+        setTestContent {
             PhittoosTheme {
                 AddTransactionScreen(
                     viewModel = viewModel,
@@ -161,7 +201,7 @@ class AddTransactionAccessibilityTest {
         viewModel.selectFriend(friend)
         viewModel.setAmount("0")
 
-        composeTestRule.setContent {
+        setTestContent {
             PhittoosTheme {
                 AddTransactionScreen(
                     viewModel = viewModel,
