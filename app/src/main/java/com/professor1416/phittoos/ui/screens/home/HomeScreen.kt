@@ -137,12 +137,27 @@ fun HomeScreen(
 
             // Top Summary Card (Side-by-side numbers + Net line)
             item {
-                TopSummaryCard(
-                    youWillGetBack = uiState.youWillGetBack,
-                    youOwe = uiState.youOwe,
-                    netPosition = uiState.netPosition,
-                    openTransactionsCount = uiState.openTransactionsCount
-                )
+                if (uiState.isLoading) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        shape = RoundedCornerShape(24.dp)
+                    ) {
+                        Text(
+                            text = "Loading your ledger…",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(20.dp)
+                        )
+                    }
+                } else {
+                    TopSummaryCard(
+                        youWillGetBack = uiState.youWillGetBack,
+                        youOwe = uiState.youOwe,
+                        netPosition = uiState.netPosition,
+                        openTransactionsCount = uiState.openTransactionsCount
+                    )
+                }
             }
 
             // Search / Filter Bar for friends
@@ -155,7 +170,7 @@ fun HomeScreen(
             }
 
             // Friend List Section
-            if (uiState.friends.isEmpty()) {
+            if (!uiState.isLoading && uiState.friends.isEmpty()) {
                 item {
                     EmptyFriendsState(
                         isSearching = uiState.searchQuery.isNotBlank(),
@@ -170,7 +185,7 @@ fun HomeScreen(
                         }
                     )
                 }
-            } else {
+            } else if (!uiState.isLoading) {
                 item {
                     Text(
                         text = "FRIENDS (${uiState.friends.size})",

@@ -1,6 +1,26 @@
 package com.professor1416.phittoos
 
 import android.content.Context
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.room.Room
+import com.professor1416.phittoos.data.dao.TransactionDao
+import com.professor1416.phittoos.data.db.AppDatabase
+import com.professor1416.phittoos.data.model.Friend
+import com.professor1416.phittoos.data.model.TransactionDirection
+import com.professor1416.phittoos.data.model.TransactionEntity
+import com.professor1416.phittoos.data.model.TransactionStatus
+import com.professor1416.phittoos.data.repository.PhittoosRepository
+import com.professor1416.phittoos.ui.screens.home.HomeScreen
+import com.professor1416.phittoos.ui.viewmodel.HomeViewModel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.runBlocking
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -276,7 +296,11 @@ class ExampleRobolectricTest {
         )
       }
     }
-    composeTestRule.waitForIdle()
+    awaitLoadedSummary(homeViewModel)
+    assertEquals(2, homeViewModel.uiState.value.openTransactionsCount)
+    assertEquals(500.0, homeViewModel.uiState.value.youWillGetBack, 0.0)
+    assertEquals(500.0, homeViewModel.uiState.value.youOwe, 0.0)
+    assertEquals(0.0, homeViewModel.uiState.value.netPosition, 0.0)
 
     // Must display "Overall balance ₹0" in top summary
     composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("Overall balance ₹0")
@@ -320,6 +344,8 @@ class ExampleRobolectricTest {
       }
     }
 
+    awaitLoadedSummary(homeViewModel)
+    assertEquals(0, homeViewModel.uiState.value.openTransactionsCount)
     composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("All settled up (₹0)")
 
     inMemoryDb.close()
@@ -359,6 +385,9 @@ class ExampleRobolectricTest {
       }
     }
 
+    awaitLoadedSummary(homeViewModel)
+    assertEquals(700.0, homeViewModel.uiState.value.netPosition, 0.0)
+    assertEquals(1, homeViewModel.uiState.value.openTransactionsCount)
     composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("You'll receive ₹700")
 
     inMemoryDb.close()
@@ -398,8 +427,119 @@ class ExampleRobolectricTest {
       }
     }
 
+    awaitLoadedSummary(homeViewModel)
+    assertEquals(-450.0, homeViewModel.uiState.value.netPosition, 0.0)
+    assertEquals(1, homeViewModel.uiState.value.openTransactionsCount)
     composeTestRule.onNodeWithTag("top_summary_net_text").assertTextEquals("You need to pay ₹450")
 
     inMemoryDb.close()
+  }
+
+  @Test
+  fun `loading offsetting open entries never claims settlement`() {
+    assertDelayedLedgerSummary(settled = false)
+  }
+
+  @Test
+  fun `loading settled entries waits before claiming settlement`() {
+    assertDelayedLedgerSummary(settled = true)
+  }
+
+  @Test
+  fun `initial loading survives inactive lifecycle until collection starts`() {
+    assertDelayedLedgerSummary(settled = false, startInactive = true)
+  }
+
+  private fun awaitLoadedSummary(viewModel: HomeViewModel) {
+    // Compose idle alone does not establish that Room/combine has emitted.
+    composeTestRule.waitUntil(timeoutMillis = 5_000) {
+      // Query semantics on every poll so Robolectric also drains pending UI work.
+      composeTestRule.onAllNodesWithTag("top_summary_net_text").fetchSemanticsNodes().isNotEmpty() &&
+        !viewModel.uiState.value.isLoading
+    }
+  }
+
+  private fun assertDelayedLedgerSummary(settled: Boolean, startInactive: Boolean = false) {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+      .allowMainThreadQueries()
+      .build()
+    val releaseTransactions = CompletableDeferred<Unit>()
+    val store = ViewModelStore()
+    try {
+      val transactionDao = db.transactionDao()
+      runBlocking {
+        val friendId = db.friendDao().insertFriend(Friend(name = "Synthetic ledger friend"))
+        for (direction in TransactionDirection.entries) {
+          transactionDao.insertTransaction(
+            TransactionEntity(
+              friendId = friendId,
+              amount = 500.0,
+              direction = direction,
+              status = if (settled) TransactionStatus.CONFIRMED else TransactionStatus.OPEN,
+              paidAmount = if (settled) 500.0 else null,
+              settledAt = if (settled) 1_700_000_000_001L else null
+            )
+          )
+        }
+      }
+      val before = runBlocking { transactionDao.getAllTransactionsOrdered() }
+      // Hold only the first transaction snapshot, without sleeping or changing Room data.
+      val delayedDao = object : TransactionDao by transactionDao {
+        override fun getAllTransactions() = flow {
+          releaseTransactions.await()
+          emitAll(transactionDao.getAllTransactions())
+        }
+      }
+      val repository = PhittoosRepository(db.friendDao(), delayedDao, db.activityDao(), db)
+      val viewModel = HomeViewModel(repository, UserPreferences(context))
+      store.put("home", viewModel)
+      val owner = object : LifecycleOwner {
+        override val lifecycle = LifecycleRegistry(this)
+      }
+      composeTestRule.runOnUiThread {
+        owner.lifecycle.currentState = if (startInactive) Lifecycle.State.CREATED else Lifecycle.State.STARTED
+      }
+      composeTestRule.setContent {
+        CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+          PhittoosTheme {
+            HomeScreen(viewModel, onNavigateToAddTransaction = {}, onNavigateToFriendDetail = {})
+          }
+        }
+      }
+      composeTestRule.runOnIdle { assertTrue(viewModel.uiState.value.isLoading) }
+      // These must hold even when Compose is idle but the ledger has not arrived.
+      composeTestRule.onAllNodesWithText("All settled up (₹0)").assertCountEquals(0)
+      composeTestRule.onAllNodesWithTag("top_summary_card").assertCountEquals(0)
+      composeTestRule.onAllNodesWithTag("empty_friends_state").assertCountEquals(0)
+      composeTestRule.onNodeWithText("Loading your ledger…").assertIsDisplayed()
+      composeTestRule.onNodeWithTag("fab_add_transaction").assertIsDisplayed()
+      composeTestRule.onNodeWithTag("btn_settings").assertIsDisplayed()
+
+      releaseTransactions.complete(Unit)
+      if (startInactive) {
+        composeTestRule.runOnIdle { assertTrue(viewModel.uiState.value.isLoading) }
+        composeTestRule.onNodeWithText("Loading your ledger…").assertIsDisplayed()
+        composeTestRule.runOnUiThread { owner.lifecycle.currentState = Lifecycle.State.STARTED }
+      }
+      awaitLoadedSummary(viewModel)
+      val state = viewModel.uiState.value
+      assertEquals(0.0, state.netPosition, 0.0)
+      assertEquals(if (settled) 0 else 2, state.openTransactionsCount)
+      assertEquals(if (settled) 0.0 else 500.0, state.youWillGetBack, 0.0)
+      assertEquals(if (settled) 0.0 else 500.0, state.youOwe, 0.0)
+      composeTestRule.onNodeWithTag("top_summary_net_text")
+        .assertTextEquals(if (settled) "All settled up (₹0)" else "Overall balance ₹0")
+      composeTestRule.onAllNodesWithText("Loading your ledger…").assertCountEquals(0)
+      if (!settled) {
+        composeTestRule.onAllNodesWithText("All settled up (₹0)").assertCountEquals(0)
+      }
+      assertEquals(before, runBlocking { transactionDao.getAllTransactionsOrdered() })
+      assertTrue(runBlocking { db.activityDao().getAllActivitiesList() }.isEmpty())
+    } finally {
+      releaseTransactions.cancel()
+      composeTestRule.runOnIdle { store.clear() }
+      db.close()
+    }
   }
 }
