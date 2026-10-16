@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import java.math.BigDecimal
 
 import com.professor1416.phittoos.ui.util.Formatters
 
@@ -288,6 +289,13 @@ class PhittoosRepository(
         dueDate: Long? = null,
         createdDate: Long = System.currentTimeMillis()
     ): Long {
+        require(amount.isFinite() && amount > 0.0) {
+            "Transaction amount must be finite and greater than ₹0."
+        }
+        // Validate the canonical decimal value without rounding or changing Double storage.
+        require(BigDecimal.valueOf(amount).stripTrailingZeros().scale() <= 2) {
+            "Transaction amount must have at most two decimal places."
+        }
         if (com.professor1416.phittoos.domain.DueDateHelper.isFutureDate(createdDate)) {
             throw IllegalArgumentException("Transaction date cannot be in the future.")
         }
