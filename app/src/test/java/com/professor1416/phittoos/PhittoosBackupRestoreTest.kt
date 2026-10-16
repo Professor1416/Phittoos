@@ -587,4 +587,334 @@ class PhittoosBackupRestoreTest {
         assertTrue(result.isSuccess)
         assertEquals("Backup Profile Name", preferences.userName)
     }
+
+    // Synthetic compatibility fixtures. All rejection tests exercise the real Room-backed restore path.
+    private fun validFinancialBackup(): org.json.JSONObject = org.json.JSONObject("""
+        {
+          "metadata": {"backupVersion": 1, "createdAt": 1000},
+          "preferences": {"userName": "Imported synthetic owner", "hasCompletedOnboarding": true, "remindersEnabled": true},
+          "friends": [{"id": 101, "name": "Synthetic A"}, {"id": 102, "name": "Synthetic B"}],
+          "transactions": [{"id": 201, "friendId": 101, "amount": 1000, "direction": "LENT", "status": "OPEN", "createdDate": 0, "paidAmount": null, "settledAt": null}],
+          "activities": [{"id": 301, "type": "TRANSACTION_CREATED", "friendId": 101, "transactionId": 201, "amount": 1000, "direction": "LENT", "createdAt": 0}]
+        }
+    """.trimIndent())
+
+    private fun org.json.JSONObject.transaction() = getJSONArray("transactions").getJSONObject(0)
+    private fun org.json.JSONObject.activity() = getJSONArray("activities").getJSONObject(0)
+
+    private suspend fun assertRejectedWithoutMutation(json: String, case: String) {
+        if (database.friendDao().getAllFriendsList().isEmpty()) {
+            val friend = repository.insertFriend("Existing synthetic ledger")
+            val transaction = repository.addTransaction(friend, 125.50, TransactionDirection.BORROWED, "Preserve", createdDate = 0L)
+            assertTrue(repository.recordRepayment(transaction, 25.50, settledAt = 0L) is com.professor1416.phittoos.data.repository.RepaymentResult.Success)
+        }
+        preferences.userName = "Existing synthetic owner"
+        preferences.hasCompletedOnboarding = false
+        preferences.remindersEnabled = false
+        preferences.lastBackupTime = 9876L
+        preferences.themeMode = com.professor1416.phittoos.data.preferences.AppThemeMode.DARK
+        val beforeFriends = database.friendDao().getAllFriendsList()
+        val beforeTransactions = database.transactionDao().getAllTransactionsOrdered()
+        val beforeActivities = database.activityDao().getAllActivitiesList()
+        val beforePreferences = context.getSharedPreferences("phittoos_prefs", Context.MODE_PRIVATE).all.toMap()
+        val beforeTheme = preferences.themeModeFlow.value
+        assertTrue("$case must fail validation", PhittoosBackupManager.validateBackup(json).isFailure)
+        val result = PhittoosBackupManager.restoreBackup(json, repository, preferences, database)
+        assertTrue("$case must fail restore", result.isFailure)
+        assertFalse("$case must explain failure", result.exceptionOrNull()?.message.isNullOrBlank())
+        assertEquals("$case friends", beforeFriends, database.friendDao().getAllFriendsList())
+        assertEquals("$case transactions", beforeTransactions, database.transactionDao().getAllTransactionsOrdered())
+        assertEquals("$case activities", beforeActivities, database.activityDao().getAllActivitiesList())
+        assertEquals("$case preferences", beforePreferences, context.getSharedPreferences("phittoos_prefs", Context.MODE_PRIVATE).all)
+        assertEquals("$case theme state", beforeTheme, preferences.themeModeFlow.value)
+    }
+
+    private suspend fun assertRoundTripPreservesRecords() {
+        val friends = database.friendDao().getAllFriendsList()
+        val transactions = database.transactionDao().getAllTransactionsOrdered()
+        val activities = database.activityDao().getAllActivitiesList()
+        val backup = PhittoosBackupManager.exportBackup(repository, preferences)
+        assertTrue(PhittoosBackupManager.validateBackup(backup).isSuccess)
+        assertEquals(1, org.json.JSONObject(backup).getJSONObject("metadata").getInt("backupVersion"))
+        repository.clearAllData()
+        assertTrue(PhittoosBackupManager.restoreBackup(backup, repository, preferences, database).isSuccess)
+        assertEquals(friends, database.friendDao().getAllFriendsList())
+        assertEquals(transactions, database.transactionDao().getAllTransactionsOrdered())
+        assertEquals(activities, database.activityDao().getAllActivitiesList())
+    }
+
+    @Test fun rejectsCrossFriendFinancialActivityWithoutMutation() = runBlocking {
+        val root = validFinancialBackup()
+        root.activity().put("friendId", 102)
+        assertRejectedWithoutMutation(root.toString(), "cross-friend activity")
+    }
+
+    @Test fun rejectsContradictoryFinancialDirectionWithoutMutation() = runBlocking {
+        for (type in listOf("TRANSACTION_CREATED", "PARTIAL_REPAYMENT", "SETTLED")) {
+            val root = validFinancialBackup()
+            root.transaction().put("status", "CONFIRMED").put("paidAmount", 1000)
+            root.activity().put("type", type).put("direction", "BORROWED")
+            assertRejectedWithoutMutation(root.toString(), "$type direction")
+        }
+    }
+
+    @Test fun rejectsContradictoryOpenPaymentStateWithoutMutation() = runBlocking {
+        for ((paid, settled) in listOf(1000 to org.json.JSONObject.NULL, 400 to 0L, 0 to 1000L)) {
+            val root = validFinancialBackup()
+            root.transaction().put("paidAmount", paid).put("settledAt", settled)
+            assertRejectedWithoutMutation(root.toString(), "OPEN paid=$paid settled=$settled")
+        }
+    }
+
+    @Test fun rejectsConfirmedExplicitUnderpaymentWithoutMutation() = runBlocking {
+        for (paid in listOf(0.0, 400.0, 999.999)) {
+            val root = validFinancialBackup()
+            root.transaction().put("status", "CONFIRMED").put("paidAmount", paid)
+            assertRejectedWithoutMutation(root.toString(), "CONFIRMED paid=$paid")
+        }
+    }
+
+    @Test fun rejectsSettlementEventOnOpenTransactionWithoutMutation() = runBlocking {
+        val root = validFinancialBackup()
+        root.activity().put("type", "SETTLED")
+        assertRejectedWithoutMutation(root.toString(), "settlement event on OPEN")
+    }
+
+    @Test fun rejectsMalformedMoneyWithoutMutation() = runBlocking {
+        for (bad in listOf<Any>("1000", "NaN", "Infinity", true, org.json.JSONObject(), org.json.JSONObject.NULL)) {
+            val root = validFinancialBackup()
+            root.transaction().put("amount", bad)
+            assertRejectedWithoutMutation(root.toString(), "malformed principal $bad")
+        }
+        for (field in listOf("paidAmount", "amount")) {
+            val root = validFinancialBackup()
+            if (field == "paidAmount") root.transaction().put(field, "400") else root.activity().put(field, "400")
+            assertRejectedWithoutMutation(root.toString(), "coerced $field")
+        }
+        val root = validFinancialBackup().toString().replace("\"amount\":1000", "\"amount\":1e400")
+        assertRejectedWithoutMutation(root, "overflowing amount")
+    }
+
+    @Test fun rejectsMalformedIdentifiersWithoutMutation() = runBlocking {
+        for (field in listOf("id", "friendId")) {
+            val root = validFinancialBackup()
+            root.transaction().put(field, if (field == "id") 201.5 else "101")
+            assertRejectedWithoutMutation(root.toString(), "malformed transaction $field")
+        }
+        val root = validFinancialBackup()
+        root.activity().put("transactionId", 201.5)
+        assertRejectedWithoutMutation(root.toString(), "fractional activity reference")
+    }
+
+    @Test fun rejectsMalformedPresentTimestampsWithoutMutation() = runBlocking {
+        for (field in listOf("createdDate", "dueDate", "settledAt")) {
+            for (bad in listOf<Any>("not-a-date", 0.5, true, "9223372036854775808", Double.MAX_VALUE)) {
+                val root = validFinancialBackup()
+                root.transaction().put(field, bad)
+                assertRejectedWithoutMutation(root.toString(), "$field=$bad")
+            }
+        }
+        for (section in listOf("metadata", "activities")) {
+            val root = validFinancialBackup()
+            val record = if (section == "metadata") root.getJSONObject("metadata") else root.activity()
+            record.put("createdAt", "invalid")
+            assertRejectedWithoutMutation(root.toString(), "$section timestamp")
+        }
+    }
+
+    @Test fun rejectsImpossibleFinancialEventValuesWithoutMutation() = runBlocking {
+        for ((type, amount) in listOf("TRANSACTION_CREATED" to 999.0, "PARTIAL_REPAYMENT" to 1001.0, "SETTLED" to 1001.0)) {
+            val root = validFinancialBackup()
+            root.transaction().put("status", "CONFIRMED").put("paidAmount", 1000)
+            root.activity().put("type", type).put("amount", amount)
+            assertRejectedWithoutMutation(root.toString(), "$type amount=$amount")
+        }
+    }
+
+    @Test fun realUntouchedPartialManualAndFinalRecordsRoundTripExactly() = runBlocking {
+        val friend = repository.insertFriend("Synthetic lifecycle friend")
+        repository.addTransaction(friend, 100.0, TransactionDirection.LENT, createdDate = 0L)
+        val partial = repository.addTransaction(friend, 1000.0, TransactionDirection.BORROWED, createdDate = 0L)
+        assertTrue(repository.recordRepayment(partial, 400.0, settledAt = 0L) is com.professor1416.phittoos.data.repository.RepaymentResult.Success)
+        val manual = repository.addTransaction(friend, 500.0, TransactionDirection.LENT, createdDate = 0L)
+        assertTrue(repository.markTransactionAsPaid(manual, settledAt = 0L).success)
+        val final = repository.addTransaction(friend, 1000.0, TransactionDirection.LENT, createdDate = 0L)
+        repository.recordRepayment(final, 400.0, settledAt = 0L)
+        assertTrue(repository.recordRepayment(final, 600.0, settledAt = 1L) is com.professor1416.phittoos.data.repository.RepaymentResult.Success)
+        assertRoundTripPreservesRecords()
+        assertEquals(400.0, database.transactionDao().getTransactionById(partial)!!.paidAmount!!, 0.0)
+        assertEquals(1000.0, database.transactionDao().getTransactionById(final)!!.paidAmount!!, 0.0)
+    }
+
+    @Test fun legacyNullableConfirmedAndHigherPrecisionRecordsRoundTripExactly() = runBlocking {
+        val friend = repository.insertFriend("Synthetic legacy friend")
+        // 1281ee4 settled status only; migration 1->2 adds NULL settled_at; neither backfills history.
+        for ((index, paid) in listOf<Double?>(null, 1000.1234).withIndex()) {
+            database.transactionDao().insertTransaction(TransactionEntity(
+                friendId = friend, amount = 1000.1234, direction = TransactionDirection.LENT,
+                status = TransactionStatus.CONFIRMED, paidAmount = paid, settledAt = null, createdDate = index.toLong()
+            ))
+        }
+        database.transactionDao().insertTransaction(TransactionEntity(
+            friendId = friend, amount = 1000.1234, direction = TransactionDirection.BORROWED,
+            paidAmount = 0.001, createdDate = -1L, dueDate = 0L
+        ))
+        assertRoundTripPreservesRecords()
+        assertTrue(database.activityDao().getAllActivitiesList().isEmpty())
+    }
+
+    @Test fun omittedLegacyOptionalFieldsRemainRestorable() = runBlocking {
+        val root = validFinancialBackup()
+        root.getJSONObject("metadata").remove("createdAt")
+        for (field in listOf("createdDate", "dueDate", "paidAmount", "settledAt", "note")) root.transaction().remove(field)
+        for (field in listOf("createdAt", "transactionId", "amount", "direction", "reminderStage", "note")) root.activity().remove(field)
+        assertTrue(PhittoosBackupManager.validateBackup(root.toString()).isSuccess)
+        assertTrue(PhittoosBackupManager.restoreBackup(root.toString(), repository, preferences, database).isSuccess)
+        val tx = database.transactionDao().getTransactionById(201)!!
+        assertNull(tx.paidAmount)
+        assertNull(tx.settledAt)
+        assertNull(tx.dueDate)
+        val activity = database.activityDao().getActivityById(301)!!
+        assertNull(activity.transactionId)
+        assertNull(activity.amount)
+        assertNull(activity.direction)
+    }
+
+    @Test fun unlinkedNullableActivitiesRoundTripWithoutInventingHistory() = runBlocking {
+        val friend = repository.insertFriend("Synthetic unlinked events")
+        for (type in ActivityType.entries) {
+            database.activityDao().insertActivity(ActivityEntity(type = type, friendId = friend, createdAt = 0L))
+        }
+        assertRoundTripPreservesRecords()
+    }
+
+    @Test fun repaymentEpsilonAndSubPaiseEventAmountsRemainRecoverable() = runBlocking {
+        val friend = repository.insertFriend("Synthetic repayment tolerance")
+        val final = repository.addTransaction(friend, 100.0, TransactionDirection.LENT, createdDate = 0L)
+        assertTrue(repository.recordRepayment(final, 100.0001, settledAt = 0L) is com.professor1416.phittoos.data.repository.RepaymentResult.Success)
+        val partial = repository.addTransaction(friend, 100.0, TransactionDirection.BORROWED, createdDate = 0L)
+        assertTrue(repository.recordRepayment(partial, 0.001, settledAt = 0L) is com.professor1416.phittoos.data.repository.RepaymentResult.Success)
+        assertEquals(0.0, database.transactionDao().getTransactionById(partial)!!.paidAmount!!, 0.0)
+        assertRoundTripPreservesRecords()
+    }
+
+    @Test fun historicalReminderSnapshotSurvivesEligibleTransactionEdit() = runBlocking {
+        val friend = repository.insertFriend("Synthetic reminder history")
+        val id = repository.addTransaction(friend, 100.0, TransactionDirection.LENT, createdDate = 0L)
+        repository.recordReminderSent(id, friend, ReminderStage.entries.first(), 100.0, TransactionDirection.LENT, timestamp = 0L)
+        val edited = repository.updateOpenUnpaidTransaction(id, 50.0, TransactionDirection.BORROWED, createdDate = 0L)
+        assertTrue(edited is com.professor1416.phittoos.data.repository.EditTransactionResult.Success)
+        assertRoundTripPreservesRecords()
+        val reminder = database.activityDao().getAllActivitiesList().single { it.type == ActivityType.REMINDER_SENT }
+        assertEquals(100.0, reminder.amount!!, 0.0)
+        assertEquals(TransactionDirection.LENT, reminder.direction)
+    }
+
+    @Test fun existingVersionAcceptanceIsCharacterizedWithoutChangingPolicy() {
+        for ((value, accepted) in listOf(
+            org.json.JSONObject.NULL to false, -1 to false, -2 to true, 0 to true,
+            1 to true, 2 to false, 1.5 to true, "1" to true, "invalid" to false, true to false
+        )) {
+            val root = validFinancialBackup()
+            root.getJSONObject("metadata").put("backupVersion", value)
+            assertEquals("Version assessment only: $value", accepted, PhittoosBackupManager.validateBackup(root.toString()).isSuccess)
+        }
+        val root = validFinancialBackup()
+        root.getJSONObject("metadata").remove("backupVersion")
+        assertTrue(PhittoosBackupManager.validateBackup(root.toString()).isFailure)
+    }
+
+
+    @Test fun existingRejectionPathsPreserveAllRecordsAndPreferences() = runBlocking {
+        val variants = listOf<Pair<String, (org.json.JSONObject) -> Unit>>(
+            "duplicate friend" to { r -> r.getJSONArray("friends").put(org.json.JSONObject(r.getJSONArray("friends").getJSONObject(0).toString())) },
+            "duplicate transaction" to { r -> r.getJSONArray("transactions").put(org.json.JSONObject(r.transaction().toString())) },
+            "duplicate activity" to { r -> r.getJSONArray("activities").put(org.json.JSONObject(r.activity().toString())) },
+            "missing friend" to { r -> r.transaction().put("friendId", 999) },
+            "missing transaction" to { r -> r.activity().put("transactionId", 999) },
+            "bad direction" to { r -> r.transaction().put("direction", "UNKNOWN") },
+            "bad status" to { r -> r.transaction().put("status", "UNKNOWN") },
+            "bad activity type" to { r -> r.activity().put("type", "UNKNOWN") },
+            "bad reminder stage" to { r -> r.activity().put("reminderStage", "UNKNOWN") },
+            "future version" to { r -> r.getJSONObject("metadata").put("backupVersion", 99) }
+        )
+        for ((label, mutate) in variants) {
+            val root = validFinancialBackup()
+            mutate(root)
+            assertRejectedWithoutMutation(root.toString(), label)
+        }
+        assertRejectedWithoutMutation("{invalid", "malformed JSON")
+        assertRejectedWithoutMutation("Friend,Amount\nSynthetic,100", "CSV")
+    }
+
+    @Test fun invalidPaidAndEventNumbersPreserveAllRecordsAndPreferences() = runBlocking {
+        for (bad in listOf<Any>(-1.0, 1001.0, "NaN", "Infinity", false)) {
+            val root = validFinancialBackup()
+            root.transaction().put("paidAmount", bad)
+            assertRejectedWithoutMutation(root.toString(), "paid=$bad")
+        }
+        for (bad in listOf<Any>(-1.0, 0.0, "NaN", "Infinity", false)) {
+            val root = validFinancialBackup()
+            root.activity().put("amount", bad)
+            assertRejectedWithoutMutation(root.toString(), "event=$bad")
+        }
+    }
+
+    @Test fun longBoundaryIdsAndHistoricalDatesRoundTripExactly() = runBlocking {
+        database.friendDao().insertFriend(Friend(id = Long.MAX_VALUE, name = "Synthetic boundary ID"))
+        database.transactionDao().insertTransaction(TransactionEntity(
+            id = Long.MAX_VALUE, friendId = Long.MAX_VALUE, amount = 1.2345,
+            direction = TransactionDirection.LENT, createdDate = Long.MIN_VALUE, dueDate = Long.MAX_VALUE
+        ))
+        database.activityDao().insertActivity(ActivityEntity(
+            id = Long.MAX_VALUE, type = ActivityType.TRANSACTION_CREATED, friendId = Long.MAX_VALUE,
+            transactionId = Long.MAX_VALUE, amount = 1.2345, direction = TransactionDirection.LENT, createdAt = Long.MIN_VALUE
+        ))
+        assertRoundTripPreservesRecords()
+    }
+
+
+    @Test fun skippedProfileBackupsRestoreBothEmptyAndPopulatedLedgers() = runBlocking {
+        for (populated in listOf(false, true)) {
+            repository.clearAllData()
+            if (populated) {
+                val friend = repository.insertFriend("Synthetic skipped profile")
+                repository.addTransaction(friend, 12.34, TransactionDirection.BORROWED, createdDate = 0L)
+            }
+            // OnboardingScreen.completeAndGoHome permits Skip without assigning a name.
+            preferences.userName = ""
+            preferences.hasCompletedOnboarding = true
+            preferences.remindersEnabled = false
+            val friends = database.friendDao().getAllFriendsList()
+            val transactions = database.transactionDao().getAllTransactionsOrdered()
+            val activities = database.activityDao().getAllActivitiesList()
+            val backup = PhittoosBackupManager.exportBackup(repository, preferences)
+            val validation = PhittoosBackupManager.validateBackup(backup)
+            assertTrue(validation.isSuccess)
+            assertEquals("", validation.getOrThrow().profileName)
+            preferences.userName = "Later synthetic profile"
+            preferences.hasCompletedOnboarding = false
+            preferences.remindersEnabled = true
+            repository.clearAllData()
+            assertTrue(PhittoosBackupManager.restoreBackup(backup, repository, preferences, database).isSuccess)
+            assertEquals("", preferences.userName)
+            assertTrue(preferences.hasCompletedOnboarding)
+            assertFalse(preferences.remindersEnabled)
+            assertEquals(friends, database.friendDao().getAllFriendsList())
+            assertEquals(transactions, database.transactionDao().getAllTransactionsOrdered())
+            assertEquals(activities, database.activityDao().getAllActivitiesList())
+        }
+    }
+
+    @Test fun missingOrNonStringProfileNameIsRejectedWithoutMutation() = runBlocking {
+        for (bad in listOf<Any>(org.json.JSONObject.NULL, false, 123, org.json.JSONObject())) {
+            val root = validFinancialBackup()
+            root.getJSONObject("preferences").put("userName", bad)
+            assertRejectedWithoutMutation(root.toString(), "malformed profile $bad")
+        }
+        val root = validFinancialBackup()
+        root.getJSONObject("preferences").remove("userName")
+        assertRejectedWithoutMutation(root.toString(), "missing profile field")
+    }
+
 }
