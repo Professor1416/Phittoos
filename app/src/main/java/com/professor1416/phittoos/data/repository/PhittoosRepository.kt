@@ -692,9 +692,11 @@ class PhittoosRepository(
                 }
             }
 
-            userPreferences.userName = userName
-            userPreferences.hasCompletedOnboarding = hasCompletedOnboarding
-            userPreferences.remindersEnabled = remindersEnabled
         }
+        // Do not change preferences until Room replacement completes successfully.
+        // These separate stores are still not atomic across process termination.
+        userPreferences.userName = userName
+        userPreferences.hasCompletedOnboarding = hasCompletedOnboarding
+        userPreferences.remindersEnabled = remindersEnabled
     }
 }
