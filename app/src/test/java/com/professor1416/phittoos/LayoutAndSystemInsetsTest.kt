@@ -1,6 +1,9 @@
 package com.professor1416.phittoos
 
 import android.content.Context
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -67,9 +70,12 @@ class LayoutAndSystemInsetsTest {
 
     @Test
     fun homeScreen_rendersFabAndListContent() {
-        runBlocking {
-            val friendId = repository.insertFriend("Vikram")
-            repository.addTransaction(friendId, 450.0, TransactionDirection.LENT, "Lunch")
+        val friendId = runBlocking {
+            val id = repository.insertFriend("Vikram")
+            val transactionId = repository.addTransaction(id, 450.0, TransactionDirection.LENT, "Lunch")
+            assertEquals("Vikram", friendDao.getFriendByIdOnce(id)?.name)
+            assertEquals(id, transactionDao.getTransactionById(transactionId)!!.friendId)
+            id
         }
 
         val homeViewModel = HomeViewModel(repository, userPreferences)
@@ -84,7 +90,19 @@ class LayoutAndSystemInsetsTest {
             }
         }
 
-        composeTestRule.waitForIdle()
+        // Compose idle does not guarantee that Room/combine has delivered the friend list.
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            // Query semantics on every poll to drain pending Robolectric UI work as well.
+            val rowExists = composeTestRule.onAllNodesWithTag("friend_row_$friendId")
+                .fetchSemanticsNodes().isNotEmpty()
+            val state = homeViewModel.uiState.value
+            rowExists && !state.isLoading &&
+                state.friends.any { it.friend.id == friendId && it.friend.name == "Vikram" }
+        }
+        val loadedFriend = homeViewModel.uiState.value.friends.single { it.friend.id == friendId }
+        assertEquals(450.0, loadedFriend.netBalance, 0.0)
+        assertEquals(1, loadedFriend.openTransactionsCount)
+        composeTestRule.onAllNodesWithText("Loading your ledger…").assertCountEquals(0)
         composeTestRule.onNodeWithTag("fab_add_transaction").assertIsDisplayed()
         composeTestRule.onNodeWithText("Vikram").assertIsDisplayed()
     }
