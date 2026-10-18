@@ -1,0 +1,35 @@
+<resources>
+    <string name="v2_prototype_app_name">Phittoos V2 Prototype</string>
+    <string name="v2_demo_title">Shared Debt Agreement Demo</string>
+    <string name="v2_demo_banner">V2 Prototype — Synthetic data only. No real accounts or payments.</string>
+    <string name="v2_private">Private</string>
+    <string name="v2_shared">Shared</string>
+    <string name="v2_demo_perspective">Demo perspective — this is not authentication</string>
+    <string name="v2_actor_a">Participant A (demo)</string>
+    <string name="v2_actor_b">Participant B (demo)</string>
+    <string name="v2_private_heading">Private offline example</string>
+    <string name="v2_private_note">A’s private example with a different friend</string>
+    <string name="v2_private_amount">Private amount to get back: %1$s</string>
+    <string name="v2_private_explanation">Only recorded by A. This synthetic record is never shared or converted into a proposal.</string>
+    <string name="v2_no_private_record">No private demo record for Participant B.</string>
+    <string name="v2_shared_heading">Shared agreement example</string>
+    <string name="v2_agreed_outstanding">Agreed outstanding: %1$s</string>
+    <string name="v2_no_agreed_debt">No debt agreed yet. Proposals are separate from the agreed balance.</string>
+    <string name="v2_receivable">You’ll get back: %1$s</string>
+    <string name="v2_payable">You owe: %1$s</string>
+    <string name="v2_debt_terms">A proposes lending %1$s to B.</string>
+    <string name="v2_status_draft">Status: DRAFT</string>
+    <string name="v2_status_proposed">Status: PROPOSED</string>
+    <string name="v2_status_accepted">Status: ACCEPTED</string>
+    <string name="v2_propose">Propose ₹500 debt</string>
+    <string name="v2_switch_to_proposer">Switch to Participant A to propose this example.</string>
+    <string name="v2_pending">Awaiting B’s acceptance. A cannot accept their own proposal.</string>
+    <string name="v2_accept">Accept ₹500 debt</string>
+    <string name="v2_accepted_explanation">B accepted the agreement in this demo. This does not verify a payment.</string>
+    <string name="v2_history">Event history</string>
+    <string name="v2_no_events">No shared events yet.</string>
+    <string name="v2_event_proposed">A proposed %1$s. Original proposal retained.</string>
+    <string name="v2_event_accepted">B accepted %1$s. Agreement recorded once.</string>
+    <string name="v2_reset">Reset demo</string>
+    <string name="v2_reset_explanation">Demo state stays in memory. Reset or process restart clears it; no private ledger is changed.</string>
+</resources>

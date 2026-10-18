@@ -47,6 +47,12 @@ android {
       signingConfig = signingConfigs.findByName("release")
     }
     debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    create("v2Prototype") {
+      initWith(getByName("debug"))
+      applicationIdSuffix = ".v2prototype"
+      isDebuggable = true
+      matchingFallbacks += listOf("debug")
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -60,6 +66,20 @@ android {
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
+  }
+}
+
+// The prototype has a plain Application, so its tests exercise only the isolated
+// feature. The complete V1 regression suite still runs under testDebugUnitTest.
+androidComponents {
+  beforeVariants(selector().withBuildType("v2Prototype")) {
+    it.hostTests.getValue(com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE).enable = true
+  }
+}
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+  if (name == "testV2PrototypeUnitTest") {
+    filter { includeTestsMatching("com.professor1416.phittoos.prototype.*") }
   }
 }
 
