@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:name="android.app.Application"
+        android:label="@string/v2_prototype_app_name"
+        tools:replace="android:name,android:label">
+        <activity android:name="com.professor1416.phittoos.MainActivity" tools:node="remove" />
+        <activity
+            android:name="com.professor1416.phittoos.prototype.SharedDebtPrototypeActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- No library initializer or V1 reminder startup is needed by this demo. -->
+        <provider android:name="androidx.startup.InitializationProvider" tools:node="remove" />
+    </application>
+</manifest>
